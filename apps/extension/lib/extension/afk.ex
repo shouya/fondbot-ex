@@ -31,15 +31,18 @@ defmodule Extension.AFK do
     {:reply, :ok, new(user)}
   end
 
-  def handle_call({:on_message, %Message{text: "/afk " <> reason, from: user}}, _, nil) do
+  def handle_call(
+        {
+          :on_message,
+          %Message{text: "/afk " <> reason, from: user}
+        },
+        _,
+        nil
+      ) do
     {:reply, :ok, new(user, reason)}
   end
 
-  def handle_call(
-        {:on_message, %Message{text: "/noafk" <> reason}},
-        _,
-        %__MODULE__{}
-      ) do
+  def handle_call({:on_message, %Message{text: "/noafk"}}, _, %__MODULE__{}) do
     {:reply, :ok, nil}
   end
 
@@ -61,7 +64,7 @@ defmodule Extension.AFK do
   end
 
   defp notify_afk(
-         %Message{message_id: id, from: user, chat: %{id: chat_id}},
+         %Message{message_id: id, chat: %{id: chat_id}},
          %{
            afk_at: afk_at,
            afk_user: afk_user,
@@ -70,10 +73,10 @@ defmodule Extension.AFK do
        ) do
     text =
       :erlang.iolist_to_binary([
-        afk_user |> Util.Nadia.user_name(),
+        Util.Telegram.user_name(afk_user),
         " is afk now.\n",
         "AFK set time: ",
-        ["_", afk_at |> Util.Time.format_time_and_duration(), "_"],
+        ["_", Util.Time.format_exact_and_humanize(afk_at), "_"],
         (reason && ["\n*Reason*: ", reason]) || []
       ])
 

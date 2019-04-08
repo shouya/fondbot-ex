@@ -26,6 +26,7 @@ defmodule Manager.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:extension, in_umbrella: true},
       {:nadia, "~> 0.4.4"},
     ]
   end

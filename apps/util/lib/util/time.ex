@@ -18,6 +18,7 @@ defmodule Util.Time do
     Timex.format!(datetime, "{relative}", :relative)
   end
 
+  @spec format_exact_and_humanize(DateTime.t()) :: bitstring()
   def format_exact_and_humanize(datetime) do
     :erlang.iolist_to_binary([
       format_exact(datetime),
