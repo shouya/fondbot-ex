@@ -15,7 +15,7 @@ defmodule Manager.Application do
     children = [
       supervisor(ExtSupervisor, [exts]),
       worker(ExtStack, [exts]),
-      worker(Updater.Poll, [{ExtStack, :handler}])
+      worker(Updater.Poll, [{ExtStack, :handle}])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

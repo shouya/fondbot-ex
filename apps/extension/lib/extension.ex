@@ -16,7 +16,7 @@ defmodule Extension do
   See `GenEvent` `handle_info` callback, return type follows `handle_info`.
   """
   @callback on_info(:timeout | term(), state) :: any()
-  @callback new() :: {:ok, state} | {:stop, reason :: any()}
+  @callback new() :: state
 
   defguard is_event(t) when t in [:message, :callback, :inline_callback]
 
@@ -55,7 +55,7 @@ defmodule Extension do
 
       @impl GenServer
       def handle_call({event, payload}, _s, m) when is_event(event) do
-        process_event({:message, payload}, m)
+        process_event({event, payload}, m)
       end
 
       @impl GenServer

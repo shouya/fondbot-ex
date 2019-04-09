@@ -11,17 +11,20 @@ defmodule Extension.AFK do
   ]
 
   @impl true
-  def on(:message, %Message{text: "/afk", from: user}, :noafk) do
+  def on(:message, %Message{text: "/afk", from: user} = m, :noafk) do
+    reply_status(m, :set)
     {:ok, set_afk(user)}
   end
 
   @impl true
-  def on(:message, %Message{text: "/afk " <> reason, from: user}, :noafk) do
+  def on(:message, %Message{text: "/afk " <> reason, from: user} = m, :noafk) do
+    reply_status(m, :set)
     {:ok, set_afk(user, reason)}
   end
 
   @impl true
-  def on(:message, %Message{text: "/noafk"}, %__MODULE__{}) do
+  def on(:message, %Message{text: "/noafk"} = m, %__MODULE__{}) do
+    reply_status(m, :unset)
     {:ok, :noafk}
   end
 
@@ -36,7 +39,7 @@ defmodule Extension.AFK do
   end
 
   @impl true
-  def new(), do: {:ok, :noafk}
+  def new(), do: :noafk
 
   defp set_afk(user, reason \\ nil) do
     %__MODULE__{
@@ -72,6 +75,16 @@ defmodule Extension.AFK do
         (reason && ["\n*Reason*: ", reason]) || []
       ])
 
+    Nadia.send_message(
+      chat_id,
+      text,
+      reply_to_message_id: id,
+      parse_mode: "Markdown"
+    )
+  end
+
+  defp reply_status(%{message_id: id, chat: %{id: chat_id}}, status) do
+    text = "AFK #{status}"
     Nadia.send_message(chat_id, text, reply_to_message_id: id)
   end
 end

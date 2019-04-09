@@ -7,6 +7,7 @@ defmodule Manager.ExtStack do
     GenServer.start_link(__MODULE__, exts, name: __MODULE__)
   end
 
+  @impl true
   @spec init([atom()]) :: {:ok, any()}
   def init(exts \\ []) do
     {:ok, exts}
@@ -17,17 +18,19 @@ defmodule Manager.ExtStack do
     GenServer.call(__MODULE__, {:insert, ext_mod})
   end
 
-  def handle({event, payload}) do
+  def handle({event, payload}) when is_event(event) do
     GenServer.cast(__MODULE__, {event, payload})
   end
 
-  def handle_cast({event, payload}, _, exts) when is_event(event) do
+  @impl true
+  def handle_cast({event, payload}, exts) when is_event(event) do
     traverse_exts(exts, {event, payload})
     {:noreply, exts}
   end
 
-  def handle_cast({:insert, ext_mod}, _, exts) do
-    {:reply, [ext_mod | exts]}
+  @impl true
+  def handle_cast({:insert, ext_mod}, exts) do
+    {:noreply, [ext_mod | exts]}
   end
 
   @spec traverse_exts(maybe_improper_list(), any()) :: :ok
