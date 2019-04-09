@@ -2,7 +2,7 @@ defmodule Extension.Store do
   use GenServer
   @table_name :fondbot_ext_store
 
-  def start_link(opts) do
+  def start_link(_opts) do
     GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
@@ -19,7 +19,8 @@ defmodule Extension.Store do
     data_file =
       :extension
       |> Application.get_env(:data_dir, "./data")
-      |> Path.join("ext_store.dets")
+      |> Path.join("ext_store.db")
+      |> String.to_charlist()
 
     data_file
     |> Path.dirname()
@@ -37,6 +38,7 @@ defmodule Extension.Store do
     {:reply, :ok, s}
   end
 
+  @impl true
   def handle_call({:load, ext}, _, s) do
     reply =
       case :dets.lookup(@table_name, ext) do
@@ -51,5 +53,10 @@ defmodule Extension.Store do
       end
 
     {:reply, reply, s}
+  end
+
+  @impl true
+  def terminate(_, _) do
+    :dets.close(@table_name)
   end
 end

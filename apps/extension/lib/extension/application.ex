@@ -6,7 +6,9 @@ defmodule Extension.Application do
   use Application
 
   def start(_type, _args) do
-    children = []
+    children = [
+      Extension.Store
+    ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options

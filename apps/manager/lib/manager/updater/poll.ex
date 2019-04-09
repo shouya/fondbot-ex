@@ -16,6 +16,10 @@ defmodule Manager.Updater.Poll do
     :error
   ]
 
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  end
+
   def init({mod, func}) do
     timer_ref = Process.send_after(__MODULE__, :poll, 100)
 

@@ -3,6 +3,10 @@ defmodule Manager.ExtStack do
 
   defguardp is_event(t) when t in [:message, :callback, :inline_callback]
 
+  def start_link(exts) do
+    GenServer.start_link(__MODULE__, exts, name: __MODULE__)
+  end
+
   @spec init([atom()]) :: {:ok, any()}
   def init(exts \\ []) do
     {:ok, exts}
