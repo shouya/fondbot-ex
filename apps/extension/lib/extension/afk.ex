@@ -1,5 +1,6 @@
 defmodule Extension.AFK do
   use GenServer
+  use Extension
 
   alias Nadia.Model.Message
 
@@ -27,13 +28,17 @@ defmodule Extension.AFK do
     }
   end
 
-  def handle_call({:on_message, %Message{text: "/afk", from: user}}, _, nil) do
+  def on(event, payload) do
+    GenServer.call(__MODULE__, {event, payload})
+  end
+
+  def handle_call({:message, %Message{text: "/afk", from: user}}, _, nil) do
     {:reply, :ok, new(user)}
   end
 
   def handle_call(
         {
-          :on_message,
+          :message,
           %Message{text: "/afk " <> reason, from: user}
         },
         _,
@@ -42,11 +47,11 @@ defmodule Extension.AFK do
     {:reply, :ok, new(user, reason)}
   end
 
-  def handle_call({:on_message, %Message{text: "/noafk"}}, _, %__MODULE__{}) do
+  def handle_call({:message, %Message{text: "/noafk"}}, _, %__MODULE__{}) do
     {:reply, :ok, nil}
   end
 
-  def handle_call({:on_message, %Message{} = msg}, _, %__MODULE__{} = s) do
+  def handle_call({:message, %Message{} = msg}, _, %__MODULE__{} = s) do
     if should_notify(s) do
       notify_afk(msg, s)
       {:reply, :ok, %{s | last_notify: DateTime.utc_now()}}

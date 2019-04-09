@@ -27,7 +27,8 @@ defmodule Manager.MixProject do
   defp deps do
     [
       {:extension, in_umbrella: true},
-      {:nadia, "~> 0.4.4"},
+      {:confex, "~> 3.4.0"},
+      {:nadia, "~> 0.4.4"}
     ]
   end
 end
