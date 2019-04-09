@@ -7,14 +7,15 @@ defmodule Manager.Application do
 
   import Supervisor.Spec
 
-  alias Manager.{ExtStack, ExtSupervisor}
+  alias Manager.{ExtStack, ExtSupervisor, Updater}
 
   def start(_type, _args) do
     exts = Application.fetch_env!(:manager, :exts)
 
     children = [
       supervisor(ExtSupervisor, [exts]),
-      {ExtStack, [exts]}
+      {ExtStack, [exts]},
+      {Updater.Poll, [{ExtStack, :handler}]}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

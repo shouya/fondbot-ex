@@ -6,11 +6,7 @@ defmodule Extension.Application do
   use Application
 
   def start(_type, _args) do
-    # List all child processes to be supervised
-    children = [
-      # Starts a worker by calling: Extension.Worker.start_link(arg)
-      # {Extension.Worker, arg}
-    ]
+    children = []
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
