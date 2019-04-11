@@ -34,7 +34,7 @@ defmodule Manager.Updater.Poll do
   end
 
   # ignore this
-  def handle_info({:ssl_closed, _}, s), do: s
+  def handle_info({:ssl_closed, _}, s), do: {:noreply, s}
 
   def handle_info(:poll, %{retries_left: 0} = s) do
     {:stop, :retries_runs_out, s}
