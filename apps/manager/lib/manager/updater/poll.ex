@@ -33,6 +33,9 @@ defmodule Manager.Updater.Poll do
     {:ok, state}
   end
 
+  # ignore this
+  def handle_info({:ssl_closed, _}, s), do: s
+
   def handle_info(:poll, %{retries_left: 0} = s) do
     {:stop, :retries_runs_out, s}
   end
@@ -80,17 +83,17 @@ defmodule Manager.Updater.Poll do
   def dispatch_updates(_, []), do: nil
 
   def dispatch_updates({mod, func}, [%{message: m} | xs]) when not is_nil(m) do
-    apply(mod, func, [{:message, m}])
+    apply(mod, func, [m])
     dispatch_updates({mod, func}, xs)
   end
 
   def dispatch_updates({mod, func}, [%{callback_query: m} | xs]) when not is_nil(m) do
-    apply(mod, func, [{:query, m}])
+    apply(mod, func, [m])
     dispatch_updates({mod, func}, xs)
   end
 
   def dispatch_updates({mod, func}, [_m | xs]) do
-    # unknown message type, skipped
+    # unsupported message type, skipped
     dispatch_updates({mod, func}, xs)
   end
 end

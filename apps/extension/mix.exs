@@ -26,7 +26,8 @@ defmodule Extension.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:util, in_umbrella: true}
+      {:util, in_umbrella: true},
+      {:confex, "~> 3.4.0"}
     ]
   end
 end

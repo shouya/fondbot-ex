@@ -6,6 +6,7 @@ config :nadia,
 config :manager,
   exts: [
     # Beware of the ordering!
+    Extension.Guard,
     Extension.AFK
   ]
 

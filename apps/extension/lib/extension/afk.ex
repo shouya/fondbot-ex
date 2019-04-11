@@ -11,25 +11,25 @@ defmodule Extension.AFK do
   ]
 
   @impl true
-  def on(:message, %Message{text: "/afk", from: user} = m, :noafk) do
+  def on(%Message{text: "/afk", from: user} = m, :noafk) do
     reply_status(m, :set)
     {:ok, set_afk(user)}
   end
 
   @impl true
-  def on(:message, %Message{text: "/afk " <> reason, from: user} = m, :noafk) do
+  def on(%Message{text: "/afk " <> reason, from: user} = m, :noafk) do
     reply_status(m, :set)
     {:ok, set_afk(user, reason)}
   end
 
   @impl true
-  def on(:message, %Message{text: "/noafk"} = m, %__MODULE__{}) do
+  def on(%Message{text: "/noafk"} = m, %__MODULE__{}) do
     reply_status(m, :unset)
     {:ok, :noafk}
   end
 
   @impl true
-  def on(:message, %Message{} = msg, %__MODULE__{} = s) do
+  def on(%Message{} = msg, %__MODULE__{} = s) do
     if should_notify(s) do
       notify_afk(msg, s)
       {:ok, %{s | last_notify: DateTime.utc_now()}}

@@ -1,7 +1,6 @@
 defmodule Extension do
   alias Nadia.Model.{Message, InlineQuery, CallbackQuery}
 
-  @type event :: :message | :callback | :inline_callback
   @type payload :: Message.t() | InlineQuery.t() | CallbackQuery.t()
   @type action :: :skip | :ok | :break
 
@@ -10,21 +9,18 @@ defmodule Extension do
   @doc """
   Called when a new event is received.
   """
-  @callback on(event, payload, state) :: action | {action, state}
+  @callback on(payload, state) :: action | {action, state}
 
   @doc """
   See `GenEvent` `handle_info` callback, return type follows `handle_info`.
   """
-  @callback on_info(:timeout | term(), state) :: any()
+  @callback on_info(:timeout | term(), state) ::
+              {:noreply, term()} | {:stop, reason :: term()}
   @callback new() :: state
-
-  defguard is_event(t) when t in [:message, :callback, :inline_callback]
 
   defmacro __using__(_opts) do
     quote do
       use GenServer
-
-      import Extension, only: [is_event: 1]
 
       @behaviour Extension
 
@@ -37,6 +33,7 @@ defmodule Extension do
         end
       end
 
+      @impl Extension
       def new() do
         nil
       end
@@ -49,13 +46,13 @@ defmodule Extension do
         GenServer.start_link(__MODULE__, nil, name: __MODULE__)
       end
 
-      def handle({event, payload}) when is_event(event) do
-        GenServer.call(__MODULE__, {event, payload})
+      def process_event(payload) do
+        GenServer.call(__MODULE__, {:event, payload})
       end
 
       @impl GenServer
-      def handle_call({event, payload}, _s, m) when is_event(event) do
-        process_event({event, payload}, m)
+      def handle_call({:event, payload}, _s, m) do
+        process_event(payload, m)
       end
 
       @impl GenServer
@@ -63,12 +60,13 @@ defmodule Extension do
         on_info(msg, s)
       end
 
+      @impl Extension
       def on_info(e, s) do
         {:stop, {:unhandled_info, e, s}}
       end
 
-      defp process_event({event, payload}, s) do
-        case on(event, payload, s) do
+      defp process_event(payload, s) do
+        case on(payload, s) do
           :ok -> {:reply, :ok, s}
           :break -> {:reply, :break, s}
           {:ok, s} -> {:reply, :ok, s}
@@ -79,7 +77,7 @@ defmodule Extension do
           {:reply, :skip, s}
       end
 
-      defoverridable init: 1, new: 0, on_info: 2, save: 1, handle: 1
+      defoverridable init: 1, new: 0, on_info: 2, save: 1, process_event: 1
     end
   end
 end
