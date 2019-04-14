@@ -7,7 +7,8 @@ defmodule Extension.Application do
 
   def start(_type, _args) do
     children = [
-      Extension.Store
+      Extension.Store,
+      Task.Supervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

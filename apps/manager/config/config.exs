@@ -7,7 +7,8 @@ config :manager,
   exts: [
     # Beware of the ordering!
     Extension.Guard,
-    Extension.AFK
+    Extension.AFK,
+    Extension.Weather
   ]
 
 # import_config "#{Mix.env()}.exs"

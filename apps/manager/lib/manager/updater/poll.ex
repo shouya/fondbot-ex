@@ -29,6 +29,7 @@ defmodule Manager.Updater.Poll do
       |> Map.put(:callback, {mod, func})
       |> Map.put(:timer_ref, timer_ref)
       |> Map.put(:retries_left, Keyword.get(@poll_config, :retries, 10))
+      |> Map.put(:max_retries, Keyword.get(@poll_config, :retries, 10))
 
     {:ok, state}
   end

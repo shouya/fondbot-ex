@@ -5,7 +5,11 @@ defmodule Util.Telegram do
     User,
     CallbackQuery,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardHide,
+    ForceReply,
+    KeyboardButton
   }
 
   @spec user_name(Nadia.Model.User.t()) :: bitstring()
@@ -33,7 +37,29 @@ defmodule Util.Telegram do
 
   def command(_), do: :not_command
 
-  def keyboard(btns, opts \\ []) when is_list(btns) do
+  def reply_markup(action, opts \\ [])
+
+  def reply_markup(:force_reply, _opts) do
+    %ForceReply{selective: true, force_reply: true}
+  end
+
+  def reply_markup(:remove, opts) do
+    %ReplyKeyboardHide{
+      hide_keyboard: true,
+      selective: Keyword.get(opts, :selective, false)
+    }
+  end
+
+  def keyboard(type, btns, opts \\ [])
+
+  def keyboard(:reply, btns, opts) when is_list(btns) do
+    kbd = Enum.map(btns, fn row -> Enum.map(row, &keyboard_button/1) end)
+
+    %ReplyKeyboardMarkup{keyboard: kbd}
+    |> Map.merge(Enum.into(opts, %{}))
+  end
+
+  def keyboard(:inline, btns, opts) when is_list(btns) do
     kbd = Enum.map(btns, fn row -> Enum.map(row, &inline_button/1) end)
 
     %InlineKeyboardMarkup{inline_keyboard: kbd}
@@ -42,6 +68,71 @@ defmodule Util.Telegram do
 
   def inline_button({:callback, text, data}) do
     %InlineKeyboardButton{callback_data: data, text: text}
+  end
+
+  def inline_button({:url, text, url}) do
+    %InlineKeyboardButton{url: url, text: text}
+  end
+
+  def keyboard_button({:request_location, text}) do
+    %KeyboardButton{request_location: true, text: text}
+  end
+
+  def keyboard_button(text) when is_bitstring(text) do
+    keyboard_button({:text, text})
+  end
+
+  def keyboard_button({:text, text}) do
+    %KeyboardButton{text: text}
+  end
+
+  def say(msg, request) do
+    say(msg, request, [])
+  end
+
+  def reply(%Message{message_id: id} = msg, request, opts \\ []) do
+    say(msg, request, [{:reply_to_message_id, id} | opts])
+  end
+
+  def say(msg, {:audio, audio}, opts) do
+    say(msg, :send_audio, [audio], opts)
+  end
+
+  def say(msg, {:location, lat, long}, opts) do
+    say(msg, :send_location, [lat, long], opts)
+  end
+
+  def say(msg, {:photo, photo}, opts) do
+    say(msg, :send_photo, [photo], opts)
+  end
+
+  def say(msg, text, opts) when is_bitstring(text) do
+    say(msg, :send_message, [text], opts)
+  end
+
+  defp say(%Message{chat: %{id: chat_id}}, func, args, opts) do
+    apply(Nadia, func, [chat_id | args] ++ [opts])
+  end
+
+  def edit(msg, opts) when is_list(opts) do
+    edit(msg, opts |> Enum.into(%{}))
+  end
+
+  def edit(msg, %{caption: _} = opts) do
+    edit(msg, :edit_message_caption, [], opts)
+  end
+
+  def edit(msg, %{text: _} = opts) do
+    {text, opts} = Map.pop(opts, :text)
+    edit(msg, :edit_message_text, [text], opts)
+  end
+
+  defp edit(%CallbackQuery{message: msg}, func, args, opts) do
+    edit(msg, func, args, opts)
+  end
+
+  defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
+    apply(Nadia, func, [chat_id, id, nil | args] ++ [Enum.into(opts, [])])
   end
 
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"
