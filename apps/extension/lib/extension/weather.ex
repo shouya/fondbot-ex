@@ -4,6 +4,7 @@ defmodule Extension.Weather do
 
   alias Nadia.Model.{Message, CallbackQuery}
   alias Extension.Weather.Provider.AirVisual
+  import Util.Telegram
 
   defstruct [:cities, :pending]
 
@@ -25,19 +26,19 @@ defmodule Extension.Weather do
       {:ok, {id, city_name}} ->
         city = %{name: city_name, loc: [long, lat], city_id: id}
 
-        Util.Telegram.reply(
+        reply(
           msg,
           "Location added for #{city_name} (#{long}, #{lat})",
-          reply_markup: Util.Telegram.reply_markup(:remove)
+          reply_markup: reply_markup(:remove)
         )
 
         {:ok, %{state | cities: [city | cities], pending: nil}}
 
       {:error, e} ->
-        Util.Telegram.reply(
+        reply(
           msg,
           "Unable to find city near (#{long}, #{lat})\n\n#{inspect(e)}",
-          reply_markup: Util.Telegram.reply_markup(:remove)
+          reply_markup: reply_markup(:remove)
         )
 
         {:ok, %{state | pending: nil}}
@@ -46,20 +47,20 @@ defmodule Extension.Weather do
 
   def on(%Message{text: "Cancel"} = msg, %{pending: pending} = state)
       when not is_nil(pending) do
-    Util.Telegram.say(
+    say(
       msg,
       "Nevermind.",
-      reply_markup: Util.Telegram.reply_markup(:remove)
+      reply_markup: reply_markup(:remove)
     )
 
     {:ok, %{state | pending: nil}}
   end
 
   def on(%Message{} = msg, state) do
-    {:ok, chat_id} = Util.Telegram.chat_id(msg)
+    {:ok, chat_id} = chat_id(msg)
 
-    case Util.Telegram.command(msg) do
-      "weather" -> weather_report(chat_id, state)
+    case command(msg) do
+      "weather" -> weather_report(msg, state)
       {"add_loc", loc} -> add_location(chat_id, loc, state)
       "add_loc" -> add_location(chat_id, state)
       "del_loc" -> remove_location(chat_id, state)
@@ -68,45 +69,117 @@ defmodule Extension.Weather do
   end
 
   def on(%CallbackQuery{data: "weather.del_loc.all"} = q, state) do
-    Util.Telegram.edit(q, text: "All locations deleted")
+    edit(q, text: "All locations deleted")
     {:ok, Map.put(state, :cities, [])}
   end
 
-  def on(%CallbackQuery{data: "weather.del_loc." <> del_city} = q, state) do
-    Util.Telegram.edit(q, text: "Location #{del_city} deleted")
-
-    {:ok,
-     Map.update!(state, :cities, fn %{name: city} ->
-       String.downcase(city) == String.downcase(del_city)
-     end)}
+  def on(%CallbackQuery{data: "weather.del_loc.cancel"} = q, _) do
+    edit(q, text: "Fine.")
+    :ok
   end
 
-  def weather_report(chat_id, %{cities: []}) do
-    Nadia.send_message(
-      chat_id,
+  def on(
+        %CallbackQuery{data: "weather.del_loc." <> del_city} = q,
+        %{cities: cities} = s
+      ) do
+    index =
+      Enum.find_index(cities, fn %{name: city} ->
+        String.downcase(city) == String.downcase(del_city)
+      end)
+
+    case index do
+      nil ->
+        edit(q, text: "Unable to find #{del_city}")
+        :ok
+
+      _ ->
+        cities = cities |> List.delete_at(index)
+        edit(q, text: "Deleted #{del_city}")
+        {:ok, %{s | cities: cities}}
+    end
+  end
+
+  def on(%CallbackQuery{data: "weather.hourly." <> city_id} = q, _s) do
+    {:ok, report} = AirVisual.hourly_report(city_id)
+    send_report(q, city_id, report)
+    :ok
+  end
+
+  def on(%CallbackQuery{data: "weather.daily." <> city_id} = q, _s) do
+    {:ok, report} = AirVisual.daily_report(city_id)
+    send_report(q, city_id, report)
+    :ok
+  end
+
+  def on(%CallbackQuery{data: "weather.aqi." <> city_id} = q, _s) do
+    report = "Not implemented"
+    send_report(q, city_id, report)
+    :ok
+  end
+
+  def on(%CallbackQuery{data: "weather.overview." <> city_id} = q, _s) do
+    report =
+      case AirVisual.weather_report(city_id) do
+        {:ok, report} -> report
+        {:error, e} -> "Unable get weather report\n\n#{inspect(e)}"
+      end
+
+    send_report(q, city_id, report)
+    :ok
+  end
+
+  def send_report(user_input, city_id, report) do
+    report_keyboard = [
+      [{:callback, "Overview", "weather.overview." <> city_id}],
+      [{:callback, "Hourly forecast", "weather.hourly." <> city_id}],
+      [{:callback, "Daily forecast", "weather.daily." <> city_id}],
+      [{:callback, "AQI", "weather.aqi." <> city_id}]
+    ]
+
+    case user_input do
+      %Message{} ->
+        reply(
+          user_input,
+          report,
+          parse_mode: "Markdown",
+          reply_markup: keyboard(:inline, report_keyboard)
+        )
+
+      %CallbackQuery{} ->
+        spawn(fn -> answer(user_input) end)
+
+        edit(user_input,
+          text: report,
+          parse_mode: "Markdown",
+          reply_markup: keyboard(:inline, report_keyboard)
+        )
+    end
+  end
+
+  def weather_report(msg, %{cities: []}) do
+    say(
+      msg,
       "No city registered\nPlease add some cities using /add_loc"
     )
 
     :ok
   end
 
-  def weather_report(chat_id, state) do
+  def weather_report(msg, state) do
+    {:ok, chat_id} = chat_id(msg)
     Nadia.send_chat_action(chat_id, "typing")
 
     state
     |> Map.get(:cities)
-    |> Enum.map(fn %{city_id: city_id, name: name} ->
+    |> Enum.map(fn %{city_id: city_id} ->
       spawn(fn ->
-        case AirVisual.weather_report(city_id) do
-          {:ok, report} ->
-            Nadia.send_message(chat_id, report, parse_mode: "Markdown")
+        report =
+          case AirVisual.weather_report(city_id) do
+            {:ok, report} -> report
+            {:error, e} -> "Unable get weather report\n\n#{inspect(e)}"
+          end
 
-          {:error, e} ->
-            Nadia.send_message(
-              chat_id,
-              "Unable get weather report for #{name}\n\n#{inspect(e)}"
-            )
-        end
+        send_report(msg, city_id, report)
       end)
     end)
 
@@ -128,7 +201,7 @@ defmodule Extension.Weather do
 
   def add_location(chat_id, state) do
     keyboard =
-      Util.Telegram.keyboard(
+      keyboard(
         :reply,
         [[{:request_location, "Send location"}, "Cancel"]]
       )
@@ -145,10 +218,17 @@ defmodule Extension.Weather do
   end
 
   def remove_location(chat_id, %{cities: cities}) do
+    location_buttons =
+      cities
+      |> Enum.map(&{:callback, &1.name, "weather.del_loc." <> &1.name})
+
     keyboard =
-      Util.Telegram.keyboard(:inline, [
-        [{:callback, "All locations", "weather.del_loc.all"}] ++
-          Enum.map(cities, &{:callback, &1.name, "weather.del_loc." <> &1.name})
+      keyboard(:inline, [
+        location_buttons,
+        [
+          {:callback, "All locations", "weather.del_loc.all"},
+          {:callback, "Cancel", "weather.del_loc.cancel"}
+        ]
       ])
 
     Nadia.send_message(
@@ -208,6 +288,53 @@ defmodule Extension.Weather.Provider.AirVisual do
     end
   end
 
+  def hourly_report(city_id) do
+    forecast_report("hourly", "{WDshort} {h24}:{m}", city_id)
+  end
+
+  def daily_report(city_id) do
+    forecast_report("daily", "{0M}-{0D} ({WDshort})", city_id)
+  end
+
+  def forecast_report(period, time_format, city_id) do
+    with {:ok, %{} = result} <-
+           request(:get, "v1/cities/#{city_id}", params: @query_params),
+         report <- generate_forecast_report(period, time_format, result) do
+      {:ok, report}
+    else
+      {:error, e} -> {:error, e}
+    end
+  end
+
+  def generate_forecast_report(period, time_format, data) do
+    %{
+      "forecasts" => forecast,
+      "name" => city_name
+    } = data
+
+    case forecast |> Map.fetch(period) do
+      {:ok, forecast} ->
+        forecast
+        |> Enum.map(&parse_condition/1)
+        |> Enum.map(fn con ->
+          time = con.ts |> Util.Time.to_local() |> Timex.format!(time_format)
+
+          temp =
+            case con.temperature do
+              {tmin, tmax} -> "#{tmin}-#{tmax}"
+              t -> "#{t}"
+            end
+
+          icon = con.condition |> condition_icon()
+          "`#{time}`: #{temp}℃ (#{icon}), #{con.humidity}%, AQI #{con.aqi}"
+        end)
+        |> Enum.join("\n")
+
+      :error ->
+        "No #{period} forecast for #{city_name} found."
+    end
+  end
+
   defp request(method, path, opts \\ []) do
     url = :hackney_url.make_url(@endpoint, path, Keyword.get(opts, :params, []))
 
@@ -247,12 +374,12 @@ defmodule Extension.Weather.Provider.AirVisual do
     report =
       ["Conditions", "Temperature", "Humidity", "AQI"]
       |> Enum.map(fn criterion ->
-        "**#{criterion}**: " <> generate_report(criterion, current, forecast)
+        "*#{criterion}*: " <> generate_report(criterion, current, forecast)
       end)
       |> Enum.join("\n")
 
-    "Weather report for #{city_name} " <>
-      "(updated #{Util.Time.humanize(current.ts)})\n\n" <>
+    "Weather report for *#{city_name}* " <>
+      "(updated _#{Util.Time.humanize(current.ts)}_)\n\n" <>
       report <>
       "\n\n" <>
       recommends
@@ -270,7 +397,7 @@ defmodule Extension.Weather.Provider.AirVisual do
     all = [current | forecasts] |> Enum.map(fn %{temperature: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    "#{curr}℃ (#{min}—#{max}℃)"
+    "#{curr}℃ (#{min}—#{max}℃ for next 12 hr)"
   end
 
   defp generate_report("Humidity", current, forecasts) do
@@ -297,6 +424,14 @@ defmodule Extension.Weather.Provider.AirVisual do
   defp condition_icon(text) do
     case text do
       "clear-sky" -> "☀️"
+      "new-clouds" -> "🌤"
+      "scattered-clouds" -> "☁️"
+      "rain" -> "🌧"
+      "snow" -> "☃️"
+      "mist" -> "🌫"
+      "night-clear-sky" -> "🌙"
+      "night-few-clouds" -> "🌙⛅️"
+      "night-rain" -> "🌙🌧"
       _ -> text
     end
   end
@@ -306,12 +441,18 @@ defmodule Extension.Weather.Provider.AirVisual do
          "aqi" => aqi,
          "temperature" => temperature,
          "humidity" => humidity,
-         "condition" => condition
+         "icon" => condition
        }) do
+    temp =
+      case temperature do
+        %{"min" => min, "max" => max} -> {min, max}
+        t -> t
+      end
+
     %Condition{
       ts: Timex.parse!(ts, "{ISO:Extended}"),
       aqi: aqi,
-      temperature: temperature,
+      temperature: temp,
       humidity: humidity,
       condition: condition
     }

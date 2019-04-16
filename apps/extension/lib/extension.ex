@@ -67,10 +67,19 @@ defmodule Extension do
 
       defp process_event(payload, s) do
         case on(payload, s) do
-          :ok -> {:reply, :ok, s}
-          :break -> {:reply, :break, s}
-          {:ok, s} -> {:reply, :ok, s}
-          {:break, s} -> {:reply, :break, s}
+          :ok ->
+            {:reply, :ok, s}
+
+          :break ->
+            {:reply, :break, s}
+
+          {:ok, s} ->
+            save(s)
+            {:reply, :ok, s}
+
+          {:break, s} ->
+            save(s)
+            {:reply, :break, s}
         end
       rescue
         e in [FunctionClauseError, UndefinedFunctionError] ->

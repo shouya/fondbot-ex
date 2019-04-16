@@ -86,6 +86,10 @@ defmodule Util.Telegram do
     %KeyboardButton{text: text}
   end
 
+  def answer(%CallbackQuery{id: id}, opts \\ []) do
+    Nadia.answer_callback_query(id, opts)
+  end
+
   def say(msg, request) do
     say(msg, request, [])
   end

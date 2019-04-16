@@ -4,8 +4,7 @@ defmodule Util.Time do
   @spec to_local(DateTime.t()) :: DateTime.t()
   def to_local(datetime) do
     timezone = @time_conf |> Keyword.get(:timezone)
-    {:ok, datetime} = DateTime.shift_zone(datetime, timezone)
-    datetime
+    Timex.Timezone.convert(datetime, timezone)
   end
 
   @spec format_exact(DateTime.t()) :: bitstring()
