@@ -21,7 +21,7 @@ defmodule Extension.Reminder.Worker do
     map =
       Map.merge(
         %{
-          setup_time: DateTime.utc_now(),
+          setup_time: Util.Time.now(),
           repeat_count: 1
         },
         param
@@ -33,14 +33,11 @@ defmodule Extension.Reminder.Worker do
   end
 
   defhandleinfo :kickoff, state: s do
-    IO.inspect(:kickoff)
-
     case next_reminder(s) do
       :stop ->
         stop_server(:timeout)
 
       {:ok, time} ->
-        IO.inspect(time)
         delay = Timex.diff(time, Util.Time.now(), :milliseconds)
         Process.send_after(self(), :remind, delay)
         noreply()
@@ -90,7 +87,6 @@ defmodule Extension.Reminder.Worker do
 
   # triggered when a inline button on specific reminder is clicked
   defcast on_callback("done"), state: state do
-    IO.inspect({:btn_hit, :done})
     Process.cancel_timer(state.repeat_ref)
 
     case next_reminder(state) do
@@ -119,9 +115,8 @@ defmodule Extension.Reminder.Worker do
   end
 
   defcast on_callback("delete"), state: state do
-    IO.inspect({:btn_hit, :del})
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
-    stop_server(:delete)
+    stop_server(:normal)
   end
 
   defcast on_callback("snooze-5"), state: state do
@@ -137,7 +132,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   def snooze(state, duration) do
-    next_alert = Timex.add(Util.Time.now(), second: duration)
+    next_alert = Timex.shift(Util.Time.now(), seconds: duration)
 
     text = """
     Okay, I'll remind you again later.
@@ -145,16 +140,16 @@ defmodule Extension.Reminder.Worker do
     Next alert: #{Util.Time.format_exact_and_humanize(next_alert)}
     """
 
-    edit(state.notify_msg, text: text, reply_markup: nil)
+    edit(state.notify_msg, text: text)
 
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
-    repeat_ref = Process.send_after(self(), :remind, duration)
+    repeat_ref = Process.send_after(self(), :remind, duration * 1000)
 
     new_state(%{state | repeat_ref: repeat_ref})
   end
 
   defcall get_config(), state: s do
-    s |> Map.from_struct() |> Map.put(:pid, self()) |> reply()
+    s |> Map.from_struct() |> reply()
   end
 
   def next_reminder(%{time: time, recur_pattern: :oneshot}) do
@@ -168,16 +163,18 @@ defmodule Extension.Reminder.Worker do
   def next_reminder(%{time: time, recur_pattern: :daily}) do
     now = DateTime.utc_now()
 
-    DateTime.utc_now()
-    |> Util.Time.to_local()
-    |> Timex.set(
-      hour: time.hour,
-      minute: time.minute,
-      second: time.second
-    )
-    |> case do
-      time when time <= now -> {:ok, Timex.add(time, day: 1)}
-      time -> {:ok, time}
+    time =
+      Timex.set(
+        Util.Time.now(),
+        hour: time.hour,
+        minute: time.minute,
+        second: time.second
+      )
+
+    if Timex.before?(time, now) do
+      {:ok, Timex.shift(time, days: 1)}
+    else
+      {:ok, time}
     end
   end
 end
