@@ -22,7 +22,7 @@ defmodule Extension.Reminder.Worker do
       Map.merge(
         %{
           setup_time: Util.Time.now(),
-          repeat_count: 1
+          repeat_count: 0
         },
         param
       )
@@ -46,7 +46,7 @@ defmodule Extension.Reminder.Worker do
 
   defhandleinfo :remind, state: state do
     text = """
-    (#{ordinal(state.repeat_count)} alert)
+    (#{ordinal(state.repeat_count + 1)} alert)
 
     Reminder set at #{Util.Time.format_exact_and_humanize(state.setup_time)}
     _Please press "✅", or I'll remind again every 10 minutes._
@@ -96,7 +96,7 @@ defmodule Extension.Reminder.Worker do
           reply_to_message_id: state.setup_msg.message_id
         )
 
-        stop_server(:normal)
+        stop_server(:shutdown)
 
       {:ok, time} ->
         edit(state.notify_msg,
@@ -110,13 +110,13 @@ defmodule Extension.Reminder.Worker do
         )
 
         send(self(), :kickoff)
-        new_state(%{state | repeat_count: 1, repeat_ref: nil, notify_msg: nil})
+        new_state(%{state | repeat_count: 0, repeat_ref: nil, notify_msg: nil})
     end
   end
 
   defcast on_callback("delete"), state: state do
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
-    stop_server(:normal)
+    stop_server(:shutdown)
   end
 
   defcast on_callback("snooze-5"), state: state do

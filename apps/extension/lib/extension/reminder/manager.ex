@@ -49,9 +49,7 @@ defmodule Extension.Reminder.Manager do
 
     case Worker.start_link(param) do
       {:ok, pid} ->
-        IO.inspect({:w, workers})
         new_workers = Map.put(workers, id, pid)
-        IO.inspect({:nw, new_workers})
         {:reply, :ok, new_workers}
 
       {:error, e} ->
@@ -74,9 +72,7 @@ defmodule Extension.Reminder.Manager do
 
   def on_info({:EXIT, from, _reason}, workers) do
     dead_children = for {id, ^from} <- workers, do: id
-    IO.inspect(dead_children)
     new_workers = Map.drop(workers, dead_children)
-    IO.inspect(new_workers)
     {:noreply, new_workers}
   end
 end

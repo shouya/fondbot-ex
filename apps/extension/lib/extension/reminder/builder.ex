@@ -72,13 +72,7 @@ defmodule Extension.Reminder.Builder do
   end
 
   def on(%Message{text: text}, %{stage: :set_time, widget: time_selector}) do
-    IO.inspect(text)
     TimeSelector.message(time_selector, text)
-    :ok
-  end
-
-  def on(m, s) do
-    IO.inspect({:uncaught, m, s})
     :ok
   end
 
@@ -103,11 +97,6 @@ defmodule Extension.Reminder.Builder do
       when w == w2 do
     {:ok, new_s} = cancel(msg, s, :edit)
     {:noreply, new_s}
-  end
-
-  def on_info(i, s) do
-    IO.inspect({:unc, i, s})
-    {:noreply, s}
   end
 
   def cancel(msg, %{widget: w}, :edit) do
