@@ -7,7 +7,7 @@ defmodule Util.Telegram do
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
-    ReplyKeyboardHide,
+    ReplyKeyboardRemove,
     ForceReply,
     KeyboardButton
   }
@@ -39,13 +39,25 @@ defmodule Util.Telegram do
 
   def reply_markup(action, opts \\ [])
 
-  def reply_markup(:force_reply, _opts) do
-    %ForceReply{selective: true, force_reply: true}
+  def reply_markup(:force_reply, opts) do
+    force_reply(opts)
   end
 
   def reply_markup(:remove, opts) do
-    %ReplyKeyboardHide{
-      hide_keyboard: true,
+    remove_keyboard(opts)
+  end
+
+  def reply_markup(:hide, opts) do
+    remove_keyboard(opts)
+  end
+
+  def force_reply(_opts \\ []) do
+    %ForceReply{selective: true, force_reply: true}
+  end
+
+  def remove_keyboard(opts \\ []) do
+    %ReplyKeyboardRemove{
+      remove_keyboard: true,
       selective: Keyword.get(opts, :selective, false)
     }
   end
@@ -87,7 +99,7 @@ defmodule Util.Telegram do
   end
 
   def answer(%CallbackQuery{id: id}, opts \\ []) do
-    Nadia.answer_callback_query(id, opts)
+    spawn(fn -> Nadia.answer_callback_query(id, opts) end)
   end
 
   def say(msg, request) do
@@ -137,6 +149,61 @@ defmodule Util.Telegram do
 
   defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
     apply(Nadia, func, [chat_id, id, nil | args] ++ [Enum.into(opts, [])])
+  end
+
+  # Like edit, but promote to the latest one, return the new message
+  # done by deleting and resending
+  def reset(stuff, request, opts \\ [])
+
+  def reset(%CallbackQuery{message: msg}, request, opts) do
+    reset(msg, request, opts)
+  end
+
+  def reset(%Message{} = msg, request, opts) do
+    delete_message(msg)
+    say(msg, request, opts)
+  end
+
+  def delete_message(%Message{chat: %{id: chat_id}, message_id: id}) do
+    Nadia.API.request("deleteMessage", chat_id: chat_id, message_id: id)
+  end
+
+  @doc """
+  Returns a human-friendly short description about the massage
+  """
+  def message_digest(%Message{text: text}) when byte_size(text) > 30 do
+    shortened = String.slice(text, 0..20)
+    ~s("#{shortened}…")
+  end
+
+  def message_digest(%Message{text: text}) do
+    ~s("#{text}")
+  end
+
+  def message_digest(%Message{photo: [_ | _]}) do
+    ~s(the photo)
+  end
+
+  def message_digest(%Message{video: a}) when not is_nil(a) do
+    ~s(the video)
+  end
+
+  def message_digest(%Message{voice: a}) when not is_nil(a) do
+    ~s(the voice message)
+  end
+
+  def message_digest(%Message{}) do
+    ~s(the message)
+  end
+
+  @doc """
+  Reproduce a message
+  """
+  def reproduce(message, opts \\ [])
+
+  def reproduce(%Message{text: text} = msg, opts) when not is_nil(text) do
+    chat_id = opts[:chat_id] || msg.chat.id
+    Nadia.send_message(chat_id, text)
   end
 
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"

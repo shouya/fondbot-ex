@@ -26,7 +26,7 @@ defmodule Util.MixProject do
   defp deps do
     [
       {:tzdata, "~> 0.5"},
-      {:timex, "~> 3.1"},
+      {:timex, "~> 3.1"}
     ]
   end
 end

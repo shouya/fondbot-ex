@@ -28,7 +28,7 @@ defmodule Manager.MixProject do
     [
       {:extension, in_umbrella: true},
       {:confex, "~> 3.4.0"},
-      {:nadia, "~> 0.4.4"}
+      {:nadia, git: "https://github.com/shouya/nadia.git"}
     ]
   end
 end

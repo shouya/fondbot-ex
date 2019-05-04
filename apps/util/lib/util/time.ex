@@ -1,6 +1,10 @@
 defmodule Util.Time do
   @time_conf Application.get_env(:util, :time, timezone: "Asia/Shanghai")
 
+  def now() do
+    DateTime.utc_now() |> to_local()
+  end
+
   @spec to_local(DateTime.t()) :: DateTime.t()
   def to_local(datetime) do
     timezone = @time_conf |> Keyword.get(:timezone)

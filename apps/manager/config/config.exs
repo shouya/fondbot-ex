@@ -8,7 +8,9 @@ config :manager,
     # Beware of the ordering!
     Extension.Guard,
     Extension.AFK,
-    Extension.Weather
+    Extension.Weather,
+    Extension.Reminder.Builder,
+    Extension.Reminder.Manager
   ]
 
 # import_config "#{Mix.env()}.exs"

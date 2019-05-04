@@ -32,5 +32,3 @@ use Mix.Config
 config :extension, :guard,
   safe_users: [],
   report_channel: {:system, :integer, "ADMIN_CHANNEL"}
-
-

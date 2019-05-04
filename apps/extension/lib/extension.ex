@@ -26,11 +26,16 @@ defmodule Extension do
 
       @impl GenServer
       def init(_) do
-        case Extension.Store.load_state(__MODULE__) do
-          {:ok, state} -> {:ok, state}
-          :undef -> {:ok, new()}
-          {:error, reason} -> {:stop, reason}
-        end
+        before_init()
+
+        state =
+          case Extension.Store.load_state(__MODULE__) do
+            {:ok, state} -> {:ok, from_save(state)}
+            :undef -> {:ok, new()}
+            {:error, reason} -> {:stop, reason}
+          end
+
+        after_init(state)
       end
 
       @impl Extension
@@ -38,9 +43,14 @@ defmodule Extension do
         nil
       end
 
+      def from_save(x), do: x
+
       def save(s) do
         Extension.Store.save_state(__MODULE__, s)
       end
+
+      def before_init(), do: nil
+      def after_init(s), do: s
 
       def start_link(_) do
         GenServer.start_link(__MODULE__, nil, name: __MODULE__)
@@ -86,7 +96,14 @@ defmodule Extension do
           {:reply, :skip, s}
       end
 
-      defoverridable init: 1, new: 0, on_info: 2, save: 1, process_event: 1
+      defoverridable init: 1,
+                     new: 0,
+                     on_info: 2,
+                     save: 1,
+                     process_event: 1,
+                     from_save: 1,
+                     before_init: 0,
+                     after_init: 1
     end
   end
 end
