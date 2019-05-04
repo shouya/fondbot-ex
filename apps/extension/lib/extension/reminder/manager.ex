@@ -14,7 +14,7 @@ defmodule Extension.Reminder.Manager do
     %{}
   end
 
-  def from_saved(workers) do
+  def from_save(workers) do
     workers
     |> Enum.flat_map(fn %{id: id} = conf ->
       case Worker.start_link(conf) do
@@ -33,6 +33,8 @@ defmodule Extension.Reminder.Manager do
           Worker.get_config(pid)
         end
       end)
+      |> Enum.filter(&match?({:ok, _}, &1))
+      |> Enum.map(fn {:ok, v} -> v end)
       |> Enum.reject(&is_nil/1)
       |> Enum.to_list()
 
@@ -62,7 +64,7 @@ defmodule Extension.Reminder.Manager do
     answer(q)
 
     with [id, command] <- id_and_cmd |> String.split("."),
-         pid <- s[id] do
+         {:ok, pid} <- Map.fetch(s, id) do
       Worker.on_callback(pid, command)
       {:ok, s}
     else

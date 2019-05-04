@@ -35,7 +35,7 @@ defmodule Extension.Reminder.Worker do
   defhandleinfo :kickoff, state: s do
     case next_reminder(s) do
       :stop ->
-        stop_server(:timeout)
+        stop_server({:shutdown, :already_passed})
 
       {:ok, time} ->
         delay = Timex.diff(time, Util.Time.now(), :milliseconds)
@@ -149,7 +149,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   defcall get_config(), state: s do
-    s |> Map.from_struct() |> reply()
+    IO.inspect(s |> Map.from_struct() |> reply())
   end
 
   def next_reminder(%{time: time, recur_pattern: :oneshot}) do
