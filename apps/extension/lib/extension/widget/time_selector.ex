@@ -83,7 +83,19 @@ defmodule Extension.Widget.TimeSelector do
   end
 
   defcast callback("done"), from: from, state: %{msg: msg, time: time} do
-    stop_server({:shutdown, {:time_set, time, msg}})
+    diff = Timex.diff(time, DateTime.utc_now())
+
+    if diff < 5 do
+      prompt(
+        {:edit, msg},
+        time,
+        "Invalid time. The time must be at least 5 secs from now.\n\n"
+      )
+
+      noreply()
+    else
+      stop_server({:shutdown, {:time_set, time, msg}})
+    end
   end
 
   defcast callback("cancel"), state: %{msg: msg} do
@@ -209,18 +221,20 @@ defmodule Extension.Widget.TimeSelector do
     ]
   }
 
-  defp prompt({:edit, msg}, curr_time) do
+  defp prompt(action, curr_time, header \\ "")
+
+  defp prompt({:edit, msg}, curr_time, header) do
     text = """
-    Current time: #{format_time(curr_time)}
+    #{header}Current time: #{format_time(curr_time)}
     Adjust time using the button below.
     """
 
     edit(msg, text: text, reply_markup: keyboard(:inline, @keyboard_set[:reminder]))
   end
 
-  defp prompt({:reset, msg}, curr_time) do
+  defp prompt({:reset, msg}, curr_time, header) do
     text = """
-    Current time: #{format_time(curr_time)}
+    #{header}Current time: #{format_time(curr_time)}
     Adjust time using the button below.
     """
 
