@@ -29,14 +29,10 @@ defmodule Extension.Reminder.Manager do
     config =
       workers
       |> Task.async_stream(fn {_, pid} ->
-        if Process.alive?(pid) do
-          Worker.get_config(pid)
-        end
+        if Process.alive?(pid), do: Worker.get_config(pid)
       end)
       |> Enum.filter(&match?({:ok, _}, &1))
       |> Enum.map(fn {:ok, v} -> v end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.to_list()
 
     Extension.Store.save_state(__MODULE__, config)
   end
@@ -52,6 +48,7 @@ defmodule Extension.Reminder.Manager do
     case Worker.start_link(param) do
       {:ok, pid} ->
         new_workers = Map.put(workers, id, pid)
+        send(self(), :save)
         {:reply, :ok, new_workers}
 
       {:error, e} ->
@@ -75,6 +72,7 @@ defmodule Extension.Reminder.Manager do
   def on_info({:EXIT, from, _reason}, workers) do
     dead_children = for {id, ^from} <- workers, do: id
     new_workers = Map.drop(workers, dead_children)
+    send(self(), :save)
     {:noreply, new_workers}
   end
 end

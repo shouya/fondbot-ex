@@ -65,6 +65,15 @@ defmodule Extension do
         process_event(payload, m)
       end
 
+      def handle_call(:save, _, s) do
+      end
+
+      @impl GenServer
+      def handle_info(:save, s) do
+        save(s)
+        {:noreply, s}
+      end
+
       @impl GenServer
       def handle_info(msg, s) do
         on_info(msg, s)
@@ -84,11 +93,11 @@ defmodule Extension do
             {:reply, :break, s}
 
           {:ok, s} ->
-            save(s)
+            send(self(), :save)
             {:reply, :ok, s}
 
           {:break, s} ->
-            save(s)
+            send(self(), :save)
             {:reply, :break, s}
         end
       rescue
