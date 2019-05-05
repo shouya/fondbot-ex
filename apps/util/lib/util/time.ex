@@ -28,4 +28,12 @@ defmodule Util.Time do
       [" (", humanize(datetime), ")"]
     ])
   end
+
+  def format_short_date(datetime) do
+    Timex.format!(datetime, "{Mshort} {0D}")
+  end
+
+  def format_short_time(datetime) do
+    Timex.format!(datetime, "{0h24}:{0m}")
+  end
 end

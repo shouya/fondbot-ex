@@ -2,9 +2,9 @@ defmodule Extension.Reminder.Worker do
   use ExActor.GenServer
 
   import Util.Telegram
-  import Util.Number
+  import Util.Number, only: [ordinal: 1]
 
-  @default_repeat_duration 10 * 60 * 1000
+  @default_repeat_duration 10 * 60
 
   defstruct [
     :id,
