@@ -117,19 +117,19 @@ defmodule Extension.Widget.TimeSelector do
   defp text_to_time(text, curr_time, :set_hr) do
     case Integer.parse(text) do
       {n, ""} when 0 <= n and n <= 23 ->
-        curr_time |> Timex.set(hour: n)
+        curr_time |> Timex.set(hour: n, second: 0)
 
       {n, "am"} when 1 <= n and n <= 12 ->
-        curr_time |> Timex.set(hour: Integer.mod(n, 12))
+        curr_time |> Timex.set(hour: Integer.mod(n, 12), second: 0)
 
       {n, " am"} when 1 <= n and n <= 12 ->
-        curr_time |> Timex.set(hour: Integer.mod(n, 12))
+        curr_time |> Timex.set(hour: Integer.mod(n, 12), second: 0)
 
       {n, "pm"} when 1 <= n and n <= 12 ->
-        curr_time |> Timex.set(hour: 12 + Integer.mod(n, 12))
+        curr_time |> Timex.set(hour: 12 + Integer.mod(n, 12), second: 0)
 
       {n, " pm"} when 1 <= n and n <= 12 ->
-        curr_time |> Timex.set(hour: 12 + Integer.mod(n, 12))
+        curr_time |> Timex.set(hour: 12 + Integer.mod(n, 12), second: 0)
 
       _ ->
         :invalid
@@ -139,7 +139,7 @@ defmodule Extension.Widget.TimeSelector do
   defp text_to_time(text, curr_time, :set_min) do
     case Integer.parse(text) do
       {n, ""} when 0 <= n and n <= 59 ->
-        curr_time |> Timex.set(minute: n)
+        curr_time |> Timex.set(minute: n, second: 0)
 
       _ ->
         :invalid
@@ -149,7 +149,7 @@ defmodule Extension.Widget.TimeSelector do
   defp text_to_time(text, curr_time, :custom) do
     with {hr, ":" <> min} when 0 <= hr and hr <= 23 <- Integer.parse(text),
          {min, ""} when 0 <= min and min <= 59 <- Integer.parse(min) do
-      Timex.set(curr_time, hour: hr, minute: min)
+      Timex.set(curr_time, hour: hr, minute: min, second: 0)
     else
       _ -> :invalid
     end
