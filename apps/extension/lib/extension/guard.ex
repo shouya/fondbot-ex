@@ -49,15 +49,14 @@ defmodule Extension.Guard do
         else
           confirmation = report_incidence(payload, user, guard)
 
-          pending_confirmation =
+          new_pending =
             guard
-            |> Map.get(:pending_confirmation)
+            |> Map.get(:pending)
             |> Map.put(user_id, confirmation)
 
-          %{guard | pending_confirmation: pending_confirmation}
 
           send_warning(chat_id)
-          :break
+          {:break, %{guard | pending: new_pending}}
         end
     end
   end
@@ -104,9 +103,10 @@ defmodule Extension.Guard do
   end
 
   defp handle_guard_command(
-         %CallbackQuery{data: "guard.auth." <> user_id},
+         %CallbackQuery{data: "guard.auth." <> user_id} = q,
          %{report_channel: channel_id} = guard
        ) do
+    Util.Telegram.answer(q)
     user_id = String.to_integer(user_id)
     confirmation = guard |> Map.fetch!(:pending) |> Map.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
