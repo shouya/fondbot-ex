@@ -224,6 +224,13 @@ defmodule Util.Telegram do
     |> String.replace(")", "\)")
   end
 
+  def remove_command_suffix(%Message{text: t} = m) when is_binary(t) do
+    new_t = Regex.replace(~r[^/(\w+)@\w+bot], t, "\\1")
+    Map.put(m, :text, new_t)
+  end
+
+  def remove_command_suffix(any), do: any
+
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"
   defguardp follow_with_text(msg, txt) when binary_part(msg, 1, byte_size(txt)) == txt
 

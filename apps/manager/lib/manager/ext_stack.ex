@@ -35,6 +35,7 @@ defmodule Manager.ExtStack do
   defp traverse_exts([], _), do: :ok
 
   defp traverse_exts([ext | exts], payload) do
+    payload = Util.Telegram.remove_command_suffix(payload)
     case Extension.process_update(ext, payload) do
       :ok -> traverse_exts(exts, payload)
       :break -> :ok
