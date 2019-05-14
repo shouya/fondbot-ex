@@ -68,13 +68,8 @@ defmodule Extension.Reminder.Worker do
     stop_server(:shutdown)
   end
 
-  defhandleinfo :save do
-    send(Extension.Reminder.Manager, :save)
-    noreply()
-  end
-
   defhandleinfo :remind, state: state do
-    send(self(), :save)
+    Extension.Reminder.Manager.worker_state_changed()
 
     text = """
     #{message_digest(state.setup_msg)}
@@ -95,7 +90,7 @@ defmodule Extension.Reminder.Worker do
           keyboard(:inline, [
             [
               callback.("✅", "done"),
-              callback.("Del", "delete")
+              callback.("❌", "close")
             ],
             [
               callback.("💤5 min", "snooze-5"),
@@ -123,19 +118,19 @@ defmodule Extension.Reminder.Worker do
     case kickoff(state, :timer) do
       {:stop, _} ->
         edit(state.notify_msg,
-          text: "Reminder finished! (on #{ordinal(state.repeat_count)} alert)",
+          text: "Reminder finished. (on #{ordinal(state.repeat_count)} alert)",
           reply_to_message_id: state.setup_msg.message_id
         )
 
         stop_server(:shutdown)
 
       {:ok, state} ->
-        send(self(), :save)
+        Extension.Reminder.Manager.worker_state_changed()
         {:ok, time} = next_reminder(state)
 
         edit(state.notify_msg,
           text: """
-          Reminder finished! (on #{ordinal(state.repeat_count)} alert)
+          Reminder finished. (on #{ordinal(state.repeat_count)} alert)
 
           Next reminder at #{Util.Time.format_exact_and_humanize(time)}
           """,
@@ -153,8 +148,14 @@ defmodule Extension.Reminder.Worker do
     end
   end
 
-  defcast on_callback("delete"), state: state do
+  defcast on_callback("close"), state: state do
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
+
+    edit(state.notify_msg,
+      text: "Reminder closed. (on #{ordinal(state.repeat_count)} alert)",
+      reply_to_message_id: state.setup_msg.message_id
+    )
+
     stop_server(:shutdown)
   end
 
@@ -171,7 +172,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   def snooze(state, duration) do
-    send(self(), :save)
+    Extension.Reminder.Manager.worker_state_changed()
     next_alert = Timex.shift(Util.Time.now(), seconds: duration)
 
     text = """
@@ -190,7 +191,7 @@ defmodule Extension.Reminder.Worker do
         keyboard(:inline, [
           [
             callback.("✅", "done"),
-            callback.("Del", "delete")
+            callback.("❌", "close")
           ]
         ])
     )
@@ -201,7 +202,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   def repeat(state, sec) do
-    send(self(), :save)
+    Extension.Reminder.Manager.worker_state_changed()
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
     repeat_time = Timex.shift(DateTime.utc_now(), seconds: sec)
     repeat_ref = Process.send_after(self(), :remind, sec * 1000)

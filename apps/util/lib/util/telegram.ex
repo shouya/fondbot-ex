@@ -17,12 +17,12 @@ defmodule Util.Telegram do
     first || last || name || "unnamed"
   end
 
-  @spec chat_id(any()) :: {:error, :no_chat_id} | {:ok, any()}
+  @spec chat_id(any()) :: {:ok, any()} | {:error, :no_chat_id}
   def chat_id(%Message{chat: %Chat{id: id}}), do: {:ok, id}
   def chat_id(%CallbackQuery{message: msg}), do: chat_id(msg)
   def chat_id(_), do: {:error, :no_chat_id}
 
-  @spec from_user(any()) :: {:ok, User.t()}
+  @spec from_user(any()) :: {:ok, User.t()} | {:error, :no_from_user}
   def from_user(%Message{from: user}), do: {:ok, user}
   def from_user(%CallbackQuery{from: user}), do: {:ok, user}
   def from_user(_), do: {:error, :no_from_user}

@@ -14,7 +14,7 @@ defmodule Extension.Reminder.Manager do
     %{}
   end
 
-  def from_save(workers) do
+  def from_saved(workers) do
     workers
     |> Enum.flat_map(fn %{id: id} = conf ->
       case Worker.start_link(conf) do
@@ -28,6 +28,11 @@ defmodule Extension.Reminder.Manager do
   def save(workers) do
     config = get_workers_config(workers)
     Extension.Store.save_state(__MODULE__, config)
+  end
+
+  @doc "callback when workers changed state to save current states"
+  def worker_state_changed() do
+    send(__MODULE__, :save)
   end
 
   def spawn_worker(%{} = params) do
@@ -153,6 +158,11 @@ defmodule Extension.Reminder.Manager do
     dead_children = for {id, ^from} <- workers, do: id
     new_workers = Map.drop(workers, dead_children)
     {:noreply, new_workers}
+  end
+
+  def on_info(:save, workers) do
+    save(workers)
+    {:noreply, workers}
   end
 
   def get_workers_config(workers) do

@@ -11,6 +11,9 @@ defmodule Extension.AFK do
   ]
 
   @impl true
+  def new(), do: :noafk
+
+  @impl true
   def on(%Message{text: "/afk", from: user} = m, :noafk) do
     reply_status(m, :set)
     {:ok, set_afk(user)}
@@ -37,9 +40,6 @@ defmodule Extension.AFK do
       :ok
     end
   end
-
-  @impl true
-  def new(), do: :noafk
 
   defp set_afk(user, reason \\ nil) do
     %__MODULE__{

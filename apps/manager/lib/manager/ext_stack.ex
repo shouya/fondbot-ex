@@ -35,9 +35,8 @@ defmodule Manager.ExtStack do
   defp traverse_exts([], _), do: :ok
 
   defp traverse_exts([ext | exts], payload) do
-    case apply(ext, :process_event, [payload]) do
+    case Extension.process_update(ext, payload) do
       :ok -> traverse_exts(exts, payload)
-      :skip -> traverse_exts(exts, payload)
       :break -> :ok
     end
   end
