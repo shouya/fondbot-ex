@@ -1,4 +1,13 @@
 defmodule Extension.Weather do
+  @moduledoc """
+  A weather reporter, summoned by the following commands:
+
+  - /weather - get weather report
+  - /add_loc city - add city by name
+  - /add_loc - add city by sending location
+  - /del_loc - delete city
+  """
+
   use Extension
   require Logger
 
@@ -120,8 +129,8 @@ defmodule Extension.Weather do
   def on(%CallbackQuery{data: "weather.overview." <> city_id} = q, _s) do
     report =
       case AirVisual.weather_report(city_id) do
-        {:ok, report} -> report
         {:error, e} -> "Unable get weather report\n\n#{inspect(e)}"
+        {:ok, report} -> report
       end
 
     send_report(q, city_id, report)
@@ -361,7 +370,12 @@ defmodule Extension.Weather.Provider.AirVisual do
     } = data
 
     current = parse_condition(current)
-    forecast = Enum.map(forecasts, &parse_condition/1) |> Enum.drop(1) |> Enum.take(12)
+    next_12_hr = Util.Time.now() |> Timex.shift(hours: 12)
+
+    forecast =
+      Enum.map(forecasts, &parse_condition/1)
+      |> Enum.drop(1)
+      |> Enum.take_while(fn x -> Timex.before?(x.ts, next_12_hr) end)
 
     recommends =
       recommends

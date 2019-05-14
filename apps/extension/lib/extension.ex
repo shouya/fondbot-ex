@@ -133,7 +133,7 @@ defmodule Extension do
     @moduledoc "Default actions for a extension"
     def on(_ext, _update, _state), do: :break
     def on_info(_ext, _message, state), do: {:noreply, state}
-    def new(ext), do: struct!(ext, %{})
+    def new(_ext), do: nil
     def save(ext, state), do: Extension.Store.save_state(ext, state)
     def from_saved(_ext, save), do: save
     def before_init(_ext), do: nil

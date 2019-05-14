@@ -7,6 +7,7 @@ config :manager,
   exts: [
     # Beware of the ordering!
     Extension.Guard,
+    Extension.DevUtil,
     Extension.AFK,
     Extension.Weather,
     Extension.Reminder.Builder,

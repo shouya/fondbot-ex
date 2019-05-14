@@ -206,6 +206,24 @@ defmodule Util.Telegram do
     Nadia.send_message(chat_id, text)
   end
 
+  def escape(text, :html) do
+    text
+    |> String.replace("&", "&amp;")
+    |> String.replace("<", "&lt;")
+    |> String.replace(">", "&gt;")
+    |> String.replace("\"", "&quot;")
+  end
+
+  def escape(text, :markdown) do
+    text
+    |> String.replace("*", "\*")
+    |> String.replace("_", "\_")
+    |> String.replace("[", "\[")
+    |> String.replace("]", "\]")
+    |> String.replace("(", "\(")
+    |> String.replace(")", "\)")
+  end
+
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"
   defguardp follow_with_text(msg, txt) when binary_part(msg, 1, byte_size(txt)) == txt
 
