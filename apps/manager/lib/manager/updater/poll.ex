@@ -21,6 +21,7 @@ defmodule Manager.Updater.Poll do
 
   @impl GenServer
   def init(_) do
+    spawn(fn -> Nadia.delete_webhook() end)
     timer_ref = Process.send_after(__MODULE__, :poll, 100)
 
     state =

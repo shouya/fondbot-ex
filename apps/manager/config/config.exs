@@ -13,9 +13,10 @@ config :manager,
     Extension.Reminder.Builder,
     Extension.Reminder.Manager
   ],
-  updater: :poll
+  updater: :webhook
 
-config :manager, :webhook, port: 8976
-
+config :manager, :webhook,
+  port: 9786,
+  url: "https://7c857279.ngrok.io"
 
 # import_config "#{Mix.env()}.exs"
