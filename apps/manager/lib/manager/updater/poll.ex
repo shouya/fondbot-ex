@@ -8,7 +8,6 @@ defmodule Manager.Updater.Poll do
                )
 
   defstruct [
-    :callback,
     :timer_ref,
     :update_id,
     :retries_left,
@@ -16,17 +15,17 @@ defmodule Manager.Updater.Poll do
     :error
   ]
 
-  def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, nil, name: __MODULE__)
   end
 
-  def init({mod, func}) do
+  @impl GenServer
+  def init(_) do
     timer_ref = Process.send_after(__MODULE__, :poll, 100)
 
     state =
       %__MODULE__{}
       |> Map.put(:interval, Keyword.get(@poll_config, :interval, 1))
-      |> Map.put(:callback, {mod, func})
       |> Map.put(:timer_ref, timer_ref)
       |> Map.put(:retries_left, Keyword.get(@poll_config, :retries, 10))
       |> Map.put(:max_retries, Keyword.get(@poll_config, :retries, 10))
@@ -35,13 +34,16 @@ defmodule Manager.Updater.Poll do
   end
 
   # ignore this
+  @impl GenServer
   def handle_info({:ssl_closed, _}, s), do: {:noreply, s}
 
+  @impl GenServer
   def handle_info(:poll, %{retries_left: 0} = s) do
     {:stop, :retries_runs_out, s}
   end
 
-  def handle_info(:poll, %{callback: callback} = s) do
+  @impl GenServer
+  def handle_info(:poll, s) do
     opts =
       []
       |> Keyword.put(:limit, Keyword.get(@poll_config, :limit, 100))
@@ -50,7 +52,7 @@ defmodule Manager.Updater.Poll do
 
     case Nadia.get_updates(opts) do
       {:ok, updates} ->
-        dispatch_updates(callback, updates)
+        Manager.Updater.dispatch_updates(updates)
 
         update_id =
           updates
@@ -79,22 +81,5 @@ defmodule Manager.Updater.Poll do
 
         {:noreply, new_state}
     end
-  end
-
-  def dispatch_updates(_, []), do: nil
-
-  def dispatch_updates({mod, func}, [%{message: m} | xs]) when not is_nil(m) do
-    apply(mod, func, [m])
-    dispatch_updates({mod, func}, xs)
-  end
-
-  def dispatch_updates({mod, func}, [%{callback_query: m} | xs]) when not is_nil(m) do
-    apply(mod, func, [m])
-    dispatch_updates({mod, func}, xs)
-  end
-
-  def dispatch_updates({mod, func}, [_m | xs]) do
-    # unsupported message type, skipped
-    dispatch_updates({mod, func}, xs)
   end
 end

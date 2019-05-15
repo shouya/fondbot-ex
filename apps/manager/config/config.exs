@@ -12,6 +12,10 @@ config :manager,
     Extension.Weather,
     Extension.Reminder.Builder,
     Extension.Reminder.Manager
-  ]
+  ],
+  updater: :poll
+
+config :manager, :webhook, port: 8976
+
 
 # import_config "#{Mix.env()}.exs"
