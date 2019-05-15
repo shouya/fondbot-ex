@@ -19,4 +19,4 @@ config :manager, :webhook,
   port: 9786,
   url: "https://7c857279.ngrok.io"
 
-# import_config "#{Mix.env()}.exs"
+import_config "#{Mix.env()}.exs"
