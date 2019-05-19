@@ -17,7 +17,7 @@ defmodule Util.InlineResultCollector do
     {:ok, struct!(__MODULE__, state)}
   end
 
-  @spec add(binary(), InlineQueryResult.t()) :: :ok
+  @spec add(binary(), [InlineQueryResult.t()]) :: :ok
   def add(id, results) do
     GenServer.cast(__MODULE__, {:add, id, results})
   end

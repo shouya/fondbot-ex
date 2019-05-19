@@ -8,24 +8,27 @@ defmodule Extension.Fetcher do
   alias Nadia.Model.InlineQuery
   alias Util.InlineResultCollector
 
-  def on(%InlineQuery{id: id, query: text} = q, _) do
-    case URI.parse(text) do
-      %{host: nil} -> nil
-      url -> spawn(fn -> handle_url(q, url) end)
+  def on(%InlineQuery{query: text} = q, _) do
+    case :uri_string.parse(text) do
+      {:error, _, _} ->
+        nil
+
+      %{host: h} when is_binary(h) ->
+        spawn(fn -> handle_url(q, text) end)
     end
 
     :ok
   end
 
-  @spec handle_url(InlineQuery.t(), URI.t()) :: :ok
+  @spec handle_url(InlineQuery.t(), binary()) :: :ok
   def handle_url(q, url) do
-    type = determine_type(url)
+    url_map = :uri_string.parse(url)
+    type = determine_type(url_map)
 
     if is_nil(type) do
       :ok
     else
-      url_str = URI.to_string(url)
-      entity = get_entity(type, url_str)
+      entity = get_entity(type, url)
       InlineResultCollector.add(q.id, [entity])
       :ok
     end
