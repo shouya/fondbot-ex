@@ -5,6 +5,19 @@ defmodule Util.InlineResultCollector do
 
   defstruct [:timeout, :max_timeout, :collectors]
 
+  @type t :: %__MODULE__{
+          timeout: non_neg_integer(),
+          max_timeout: non_neg_integer(),
+          collectors: %{
+            (id :: binary()) => %{
+              id: binary(),
+              timer: reference(),
+              setup_at: integer(),
+              results: [InlineQueryResult.t()]
+            }
+          }
+        }
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
@@ -28,17 +41,17 @@ defmodule Util.InlineResultCollector do
   end
 
   def handle_cast({:add, id, results}, state) do
-    if Map.has_key?(state.collectors, id) do
-      collectors =
-        Map.update!(state.collectors, id, fn value ->
-          Map.update!(value, :results, &(&1 ++ results))
-        end)
+    case Map.get(state.collectors, id) do
+      nil ->
+        new_collector = %{new_collector(id, state.timeout) | results: results}
+        new_collectors = Map.put(state.collectors, id, new_collector)
+        {:noreply, %{state | collectors: new_collectors}}
 
-      {:noreply, %{state | collectors: collectors}}
-    else
-      collector = %{new_collector(id, state.timeout) | results: results}
-      collectors = Map.put(state.collectors, id, collector)
-      {:noreply, %{state | collectors: collectors}}
+      collector ->
+        new_collector = Map.update!(collector, :results, &(&1 ++ results))
+        new_collectors = Map.put(state.collectors, id, new_collector)
+
+        {:noreply, %{state | collectors: new_collectors}}
     end
   end
 
@@ -54,7 +67,7 @@ defmodule Util.InlineResultCollector do
     end
   end
 
-  def hanlde_info({:flush, id}, %{collectors: collectors} = s) do
+  def handle_info({:flush, id}, %{collectors: collectors} = s) do
     case Map.get(collectors, id) do
       nil ->
         {:noreply, s}

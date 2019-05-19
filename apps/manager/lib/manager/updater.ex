@@ -17,7 +17,6 @@ defmodule Manager.Updater do
   end
 
   def dispatch_updates([%{inline_query: m} | xs]) when not is_nil(m) do
-    IO.inspect(m)
     Manager.ExtStack.process_event(m)
     dispatch_updates(xs)
   end

@@ -8,6 +8,7 @@ defmodule Extension.Application do
   def start(_type, _args) do
     children = [
       Extension.Store,
+      Util.InlineResultCollector,
       Task.Supervisor
     ]
 
