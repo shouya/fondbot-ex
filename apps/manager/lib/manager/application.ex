@@ -9,14 +9,17 @@ defmodule Manager.Application do
 
   alias Manager.{ExtStack, ExtSupervisor, Updater}
 
+  require Logger
+
   @updater Application.fetch_env!(:manager, :updater)
   def start(_type, _args) do
     exts = Application.fetch_env!(:manager, :exts)
 
+    Logger.info("Using updater #{@updater}")
     updater_children =
       case @updater do
         :poll -> [Updater.Poll]
-        :webhook -> [Updater.Webhook.Server]
+        :webhook -> [Updater.Webhook]
       end
 
     children =

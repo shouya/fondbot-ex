@@ -4,6 +4,7 @@ defmodule Util.Telegram do
     Chat,
     User,
     CallbackQuery,
+    InlineQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     ReplyKeyboardMarkup,
@@ -25,6 +26,7 @@ defmodule Util.Telegram do
   @spec from_user(any()) :: {:ok, User.t()} | {:error, :no_from_user}
   def from_user(%Message{from: user}), do: {:ok, user}
   def from_user(%CallbackQuery{from: user}), do: {:ok, user}
+  def from_user(%InlineQuery{from: user}), do: {:ok, user}
   def from_user(_), do: {:error, :no_from_user}
 
   @spec command(any()) :: :not_command | binary() | {binary(), [binary()]}

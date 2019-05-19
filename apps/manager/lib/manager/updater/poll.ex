@@ -1,11 +1,11 @@
 defmodule Manager.Updater.Poll do
   use GenServer
 
-  @poll_config Application.get_env(:manager, :poll,
-                 interval: 1,
-                 limit: 100,
-                 retries: 10
-               )
+  @config Application.get_env(:manager, :poll,
+            interval: 1,
+            limit: 100,
+            retries: 10
+          )
 
   defstruct [
     :timer_ref,
@@ -26,10 +26,10 @@ defmodule Manager.Updater.Poll do
 
     state =
       %__MODULE__{}
-      |> Map.put(:interval, Keyword.get(@poll_config, :interval, 1))
+      |> Map.put(:interval, Keyword.get(@config, :interval, 1))
       |> Map.put(:timer_ref, timer_ref)
-      |> Map.put(:retries_left, Keyword.get(@poll_config, :retries, 10))
-      |> Map.put(:max_retries, Keyword.get(@poll_config, :retries, 10))
+      |> Map.put(:retries_left, Keyword.get(@config, :retries, 10))
+      |> Map.put(:max_retries, Keyword.get(@config, :retries, 10))
 
     {:ok, state}
   end
@@ -47,7 +47,7 @@ defmodule Manager.Updater.Poll do
   def handle_info(:poll, s) do
     opts =
       []
-      |> Keyword.put(:limit, Keyword.get(@poll_config, :limit, 100))
+      |> Keyword.put(:limit, Keyword.get(@config, :limit, 100))
       |> Keyword.put(:offset, Map.get(s, :update_id))
       |> Enum.reject(fn {_, v} -> is_nil(v) end)
 

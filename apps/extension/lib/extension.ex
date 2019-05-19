@@ -1,7 +1,7 @@
 defmodule Extension do
-  alias Nadia.Model.{Message, CallbackQuery}
+  alias Nadia.Model.{Message, CallbackQuery, InlineQuery}
 
-  @type update :: Message.t() | CallbackQuery.t()
+  @type update :: Message.t() | CallbackQuery.t() | InlineQuery.t()
   @type state :: any()
   @type on_ret_action :: :ok | :skip | :break
   @type on_ret_t :: on_ret_action() | {on_ret_action(), state()}

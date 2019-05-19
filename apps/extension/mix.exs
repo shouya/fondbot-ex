@@ -29,7 +29,6 @@ defmodule Extension.MixProject do
       {:util, in_umbrella: true},
       {:confex, "~> 3.4.0"},
       {:nanoid, "~> 2.0.1"},
-      {:httpoison, "~> 1.1.1"},
       {:poison, "~> 3.1"},
       {:exactor, "~> 2.2.4"}
     ]

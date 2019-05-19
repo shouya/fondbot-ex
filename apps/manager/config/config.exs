@@ -11,7 +11,8 @@ config :manager,
     Extension.AFK,
     Extension.Weather,
     Extension.Reminder.Builder,
-    Extension.Reminder.Manager
+    Extension.Reminder.Manager,
+    Extension.Fetcher
   ],
   updater: :webhook
 
