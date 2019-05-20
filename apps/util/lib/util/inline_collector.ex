@@ -2,6 +2,7 @@ defmodule Util.InlineResultCollector do
   use GenServer
 
   alias Nadia.Model.InlineQueryResult
+  require Logger
 
   defstruct [:timeout, :max_timeout, :collectors]
 
@@ -11,6 +12,7 @@ defmodule Util.InlineResultCollector do
           collectors: %{
             (id :: binary()) => %{
               id: binary(),
+              disable_cache: boolean(),
               timer: reference(),
               setup_at: integer(),
               results: [InlineQueryResult.t()]
@@ -35,6 +37,11 @@ defmodule Util.InlineResultCollector do
     GenServer.cast(__MODULE__, {:add, id, results})
   end
 
+  @spec disable_cache(binary()) :: :ok
+  def disable_cache(id) do
+    GenServer.cast(__MODULE__, {:disable_cache, id})
+  end
+
   @spec extend(binary(), milliseconds :: non_neg_integer()) :: :ok
   def extend(id, duration) do
     GenServer.cast(__MODULE__, {:extend, id, duration})
@@ -49,6 +56,19 @@ defmodule Util.InlineResultCollector do
 
       collector ->
         new_collector = Map.update!(collector, :results, &(&1 ++ results))
+        new_collectors = Map.put(state.collectors, id, new_collector)
+
+        {:noreply, %{state | collectors: new_collectors}}
+    end
+  end
+
+  def handle_cast({:disable_cache, id}, state) do
+    case Map.get(state.collectors, id) do
+      nil ->
+        {:noreply, state}
+
+      collector ->
+        new_collector = Map.put(collector, :disable_cache, true)
         new_collectors = Map.put(state.collectors, id, new_collector)
 
         {:noreply, %{state | collectors: new_collectors}}
@@ -79,7 +99,16 @@ defmodule Util.InlineResultCollector do
   end
 
   defp answer_inline_query(collector) do
-    Nadia.answer_inline_query(collector.id, collector.results)
+    cache_time = if collector.disable_cache, do: 0, else: 300
+
+    case Nadia.answer_inline_query(
+           collector.id,
+           collector.results,
+           cache_time: cache_time
+         ) do
+      {:error, e} -> Logger.error("Error when answering query: #{inspect(e)}")
+      _ -> :ok
+    end
   end
 
   defp extend_collector(%{timer: timer} = c, duration, max_timeout) do
@@ -102,6 +131,7 @@ defmodule Util.InlineResultCollector do
     %{
       id: id,
       setup_at: monotonic_now(),
+      disable_cache: false,
       timer: timer,
       results: []
     }

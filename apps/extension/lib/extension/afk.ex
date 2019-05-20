@@ -1,7 +1,8 @@
 defmodule Extension.AFK do
   use Extension
 
-  alias Nadia.Model.Message
+  alias Nadia.Model.{Message, InlineQuery, InlineQueryResult, InputMessageContent}
+  alias Util.InlineResultCollector
 
   defstruct [
     :afk_at,
@@ -39,6 +40,51 @@ defmodule Extension.AFK do
     else
       :ok
     end
+  end
+
+  @impl true
+  def on(%InlineQuery{query: input} = q, :noafk) do
+    if String.slice("afk", 0, String.length(input)) == input do
+      res = %InlineQueryResult.Article{
+        type: "article",
+        id: Nanoid.generate(),
+        title: "Click to set AFK",
+        description: "No one is AFK now",
+        input_message_content: %InputMessageContent.Text{
+          message_text: "Press /afk to set AFK",
+          parse_mode: "Markdown"
+        }
+      }
+
+      InlineResultCollector.disable_cache(q.id)
+      InlineResultCollector.add(q.id, [res])
+    end
+
+    :ok
+  end
+
+  @impl true
+  def on(%InlineQuery{query: input} = q, %__MODULE__{} = s) do
+    if String.slice("afk", 0, String.length(input)) == input do
+      username = Util.Telegram.user_name(s.afk_user)
+      duration = Util.Time.humanize(s.afk_at)
+
+      res = %InlineQueryResult.Article{
+        type: "article",
+        id: Nanoid.generate(),
+        title: "Unset AFK",
+        description: "#{username} is AFK now (set #{duration})",
+        input_message_content: %InputMessageContent.Text{
+          message_text: "Press /noafk to unset AFK",
+          parse_mode: "Markdown"
+        }
+      }
+
+      InlineResultCollector.disable_cache(q.id)
+      InlineResultCollector.add(q.id, [res])
+    end
+
+    :ok
   end
 
   defp set_afk(user, reason \\ nil) do
