@@ -4,6 +4,6 @@ workflow "New workflow" {
 }
 
 action "jclem/action-mix@master" {
-  uses = "jclem/actions-mix"
+  uses = "jclem/action-mix@master"
   args = "deps.get"
 }
