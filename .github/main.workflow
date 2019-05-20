@@ -1,9 +1,9 @@
 workflow "New workflow" {
-  resolves = ["jclem/action-mix"]
   on = "push"
+  resolves = ["jclem/action-mix@master"]
 }
 
-action "jclem/action-mix" {
-  uses = "jclem/actions/mix@master"
+action "jclem/action-mix@master" {
+  uses = "jclem/actions-mix"
   args = "deps.get"
 }
