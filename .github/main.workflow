@@ -1,6 +1,6 @@
 workflow "Build and upload to GitHub release" {
-  on = "push"
   resolves = ["Upload assets to Release"]
+  on = "release"
 }
 
 action "jclem/action-mix@master" {
