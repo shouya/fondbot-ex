@@ -99,7 +99,7 @@ defmodule Util.InlineResultCollector do
   end
 
   defp answer_inline_query(collector) do
-    cache_time = if collector.disable_cache, do: 0, else: 300
+    cache_time = if collector.disable_cache, do: 1, else: 300
 
     case Nadia.answer_inline_query(
            collector.id,
