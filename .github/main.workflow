@@ -1,4 +1,4 @@
-workflow "New workflow" {
+workflow "Build and upload to GitHub release" {
   on = "push"
   resolves = ["Upload assets to Release"]
 }
