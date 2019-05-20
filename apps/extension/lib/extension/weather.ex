@@ -157,9 +157,19 @@ defmodule Extension.Weather do
   end
 
   def on(
-        %InlineQuery{query: ""} = q,
-        %{cities: cities, pending: nil}
+        %InlineQuery{query: input} = q,
+        %{cities: [_ | _], pending: nil} = s
       ) do
+    len = input |> String.length()
+
+    if input == String.slice("weather", 0, len) do
+      inline_weather_report(q, s)
+    end
+
+    :ok
+  end
+
+  defp inline_weather_report(q, %{cities: cities}) do
     InlineResultCollector.extend(q.id, 2000)
 
     cities
@@ -192,8 +202,6 @@ defmodule Extension.Weather do
       }
     end)
     |> (fn v -> InlineResultCollector.add(q.id, v) end).()
-
-    :ok
   end
 
   def send_report(user_input, city_id, report) do
