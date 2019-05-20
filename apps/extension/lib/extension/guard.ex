@@ -28,8 +28,12 @@ defmodule Extension.Guard do
 
   # can't check on inline
   @impl true
-  def on(%InlineQuery{}, _) do
-    :ok
+  def on(%InlineQuery{from: user}, guard) do
+    if authorized?(user.id, nil, guard) do
+      :ok
+    else
+      :break
+    end
   end
 
   @impl true
