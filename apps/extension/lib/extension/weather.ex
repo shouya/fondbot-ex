@@ -11,11 +11,30 @@ defmodule Extension.Weather do
   use Extension
   require Logger
 
-  alias Nadia.Model.{Message, CallbackQuery}
+  alias Nadia.Model.{
+    Message,
+    CallbackQuery,
+    InlineQuery,
+    InlineQueryResult,
+    InputMessageContent
+  }
+
   alias Extension.Weather.Provider.AirVisual
+  alias Util.InlineResultCollector
   import Util.Telegram
 
   defstruct [:cities, :pending]
+
+  @type city_t :: %{
+          name: binary(),
+          loc: {long :: float(), lat :: float()} | nil,
+          city_id: binary()
+        }
+
+  @type t :: %{
+          cities: [city_t],
+          pending: term() | nil
+        }
 
   def new() do
     %__MODULE__{
@@ -33,7 +52,7 @@ defmodule Extension.Weather do
 
     case AirVisual.get_nearst_city({long, lat}) do
       {:ok, {id, city_name}} ->
-        city = %{name: city_name, loc: [long, lat], city_id: id}
+        city = %{name: city_name, loc: {long, lat}, city_id: id}
 
         reply(
           msg,
@@ -134,6 +153,46 @@ defmodule Extension.Weather do
       end
 
     send_report(q, city_id, report)
+    :ok
+  end
+
+  def on(
+        %InlineQuery{query: ""} = q,
+        %{cities: cities, pending: nil}
+      ) do
+    InlineResultCollector.extend(q.id, 2000)
+
+    cities
+    |> Task.async_stream(
+      fn city ->
+        case AirVisual.weather_info(city.city_id) do
+          {:ok, info} -> {city, info, AirVisual.generate_report(info)}
+          _ -> nil
+        end
+      end,
+      max_concurrencies: 10,
+      timeout: 1800
+    )
+    |> Enum.reject(&match?(nil, &1))
+    |> Enum.map(fn {:ok, {city, info, report}} ->
+      criterions = Map.new(info.criterions)
+      {condition, _, _, _} = criterions["Conditions"]
+      {temp, temp_min, temp_max, _} = criterions["Temperature"]
+      {aqi, aqi_min, aqi_max, _} = criterions["AQI"]
+
+      %InlineQueryResult.Article{
+        type: "article",
+        id: Nanoid.generate(),
+        title: "#{city.name}: #{condition} #{temp}℃ (AQI: #{aqi})",
+        description: "#{temp_min}-#{temp_max}℃ (AQI: #{aqi_min}-#{aqi_max})",
+        input_message_content: %InputMessageContent.Text{
+          message_text: report,
+          parse_mode: "Markdown"
+        }
+      }
+    end)
+    |> (fn v -> InlineResultCollector.add(q.id, v) end).()
+
     :ok
   end
 
@@ -287,10 +346,55 @@ defmodule Extension.Weather.Provider.AirVisual do
     end
   end
 
-  def weather_report(city_id) do
+  defp parse_weather_info(data) do
+    %{
+      "current" => current,
+      "forecasts" => %{"hourly" => forecasts},
+      "name" => city_name,
+      "recommendations" => %{"pollution" => recommends}
+    } = data
+
+    current = parse_condition(current)
+    next_12_hr = Util.Time.now() |> Timex.shift(hours: 12)
+
+    forecast =
+      Enum.map(forecasts, &parse_condition/1)
+      |> Enum.drop(1)
+      |> Enum.take_while(fn x -> Timex.before?(x.ts, next_12_hr) end)
+
+    recommends =
+      recommends
+      |> Map.values()
+      |> Enum.map(&Map.get(&1, "text"))
+      |> Enum.reject(&is_nil/1)
+
+    criterions =
+      ["Conditions", "Temperature", "Humidity", "AQI"]
+      |> Enum.map(fn criterion ->
+        {criterion, generate_report(criterion, current, forecast)}
+      end)
+
+    %{
+      city_name: city_name,
+      time: current.ts,
+      criterions: criterions,
+      recommends: recommends
+    }
+  end
+
+  def weather_info(city_id) do
     with {:ok, %{} = result} <-
            request(:get, "v1/cities/#{city_id}", params: @query_params),
-         report <- generate_report(result) do
+         info <- parse_weather_info(result) do
+      {:ok, info}
+    else
+      {:error, e} -> {:error, e}
+    end
+  end
+
+  def weather_report(city_id) do
+    with {:ok, info} <- weather_info(city_id),
+         report <- generate_report(info) do
       {:ok, report}
     else
       {:error, e} -> {:error, e}
@@ -361,79 +465,71 @@ defmodule Extension.Weather.Provider.AirVisual do
     defstruct [:ts, :aqi, :temperature, :humidity, :condition]
   end
 
-  defp generate_report(data) do
+  def generate_report(info) do
     %{
-      "current" => current,
-      "forecasts" => %{"hourly" => forecasts},
-      "name" => city_name,
-      "recommendations" => %{"pollution" => recommends}
-    } = data
-
-    current = parse_condition(current)
-    next_12_hr = Util.Time.now() |> Timex.shift(hours: 12)
-
-    forecast =
-      Enum.map(forecasts, &parse_condition/1)
-      |> Enum.drop(1)
-      |> Enum.take_while(fn x -> Timex.before?(x.ts, next_12_hr) end)
+      city_name: city_name,
+      time: time,
+      criterions: criterions,
+      recommends: recommends
+    } = info
 
     recommends =
       recommends
-      |> Map.values()
-      |> Enum.map(&Map.get(&1, "text"))
-      |> Enum.reject(&is_nil/1)
       |> Enum.map(fn v -> " - #{v}" end)
       |> Enum.join("\n")
 
     report =
-      ["Conditions", "Temperature", "Humidity", "AQI"]
-      |> Enum.map(fn criterion ->
-        "*#{criterion}*: " <> generate_report(criterion, current, forecast)
+      criterions
+      |> Enum.map(fn {criterion, {_, _, _, text}} ->
+        "*#{criterion}*: " <> text
       end)
       |> Enum.join("\n")
 
     "Weather report for *#{city_name}* " <>
-      "(updated _#{Util.Time.humanize(current.ts)}_)\n\n" <>
+      "(updated _#{Util.Time.humanize(time)}_)\n\n" <>
       report <>
       "\n\n" <>
       recommends
   end
 
   defp generate_report("Conditions", current, forecasts) do
-    [current | forecasts]
-    |> Enum.map(fn %{condition: c} -> c end)
-    |> Enum.map(&condition_icon/1)
-    |> Enum.dedup()
-    |> Enum.join("→")
+    report =
+      [current | forecasts]
+      |> Enum.map(fn %{condition: c} -> c end)
+      |> Enum.map(&condition_icon/1)
+      |> Enum.dedup()
+      |> Enum.join("→")
+
+    {condition_icon(current.condition), nil, nil, report}
   end
 
   defp generate_report("Temperature", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{temperature: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    "#{curr}℃ (#{min}—#{max}℃ for next 12 hr)"
+    {curr, min, max, "#{curr}℃ (#{min}—#{max}℃ for next 12 hr)"}
   end
 
   defp generate_report("Humidity", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{humidity: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    "#{curr}% (#{min}—#{max}%)"
+    {curr, min, max, "#{curr}% (#{min}—#{max}%)"}
   end
 
   defp generate_report("AQI", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{aqi: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    "#{curr}, #{aqi_desc(curr)} (#{min}—#{max})"
+    {curr, min, max, "#{curr}, #{aqi_desc(curr)} (#{min}—#{max})"}
   end
 
-  defp aqi_desc(aqi) when 0 <= aqi and aqi < 50, do: "Good"
-  defp aqi_desc(aqi) when 50 <= aqi and aqi < 100, do: "Moderate"
-  defp aqi_desc(aqi) when 100 <= aqi and aqi < 150, do: "Unhealthy for Sensitve Groups"
-  defp aqi_desc(aqi) when 150 <= aqi and aqi < 200, do: "Unhealthy"
-  defp aqi_desc(aqi) when 200 <= aqi and aqi < 300, do: "Very Unhealthy"
-  defp aqi_desc(aqi) when 300 <= aqi, do: "Hazardous"
+  def aqi_desc(aqi) when 0 <= aqi and aqi < 50, do: "Good"
+  def aqi_desc(aqi) when 50 <= aqi and aqi < 100, do: "Moderate"
+  def aqi_desc(aqi) when 100 <= aqi and aqi < 150, do: "Unhealthy for Sensitve Groups"
+  def aqi_desc(aqi) when 150 <= aqi and aqi < 200, do: "Unhealthy"
+  def aqi_desc(aqi) when 200 <= aqi and aqi < 300, do: "Very Unhealthy"
+  def aqi_desc(aqi) when 300 <= aqi, do: "Hazardous"
 
   defp condition_icon(text) do
     case text do
