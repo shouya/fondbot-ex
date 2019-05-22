@@ -26,3 +26,5 @@ erl_crash.dump
 
 build-and-upload.sh
 
+fondbot-ex.service
+
