@@ -1,0 +1,14 @@
+[Unit]
+Description=Fondbot in Elixir
+
+[Service]
+Type=forking
+WorkingDirectory=/path/to/fondbot-ex
+EnvironmentFile=/path/to/fondbot-ex/fondbot.env
+ExecStart=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex start
+ExecStop=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex stop
+ExecReload=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex reload_config
+
+[Install]
+WantedBy=multi-user.target
+

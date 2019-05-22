@@ -22,3 +22,7 @@ erl_crash.dump
 /data/*
 
 /erlang-linux-amd64/
+
+
+build-and-upload.sh
+

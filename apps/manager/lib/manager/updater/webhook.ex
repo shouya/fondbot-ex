@@ -54,16 +54,16 @@ defmodule Manager.Updater.Webhook do
     Supervisor.start_link(__MODULE__, nil)
   end
 
-  @webhook_conf Confex.get_env(:manager, :webhook, [])
   def init(_) do
-    url = Keyword.fetch!(@webhook_conf, :url)
+    webhook_conf = Confex.get_env(:manager, :webhook, [])
+    url = Keyword.fetch!(webhook_conf, :url)
     spawn(fn -> Nadia.set_webhook(url: url) end)
 
     children = [
       Plug.Cowboy.child_spec(
         scheme: :http,
-        plug: Router,
-        options: [port: Keyword.get(@webhook_conf, :port, 9786)]
+        plug: Route,
+        options: [port: Keyword.get(webhook_conf, :port, 9786)]
       )
     ]
 

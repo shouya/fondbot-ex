@@ -34,9 +34,9 @@ environment :dev do
 end
 
 environment :prod do
-  # set include_erts: "erlang-linux-amd64"
-  set include_erts: true
-  set include_src: true
+  set include_erts: "erlang-linux-amd64"
+  # set include_erts: false
+  # set include_src: true
   set cookie: :">Mr77{.1,(GgOA/EJ~b~rHJ3C[oE4p_wHn<O7wOcYGBRv:V,ggj`eK?0obu`$q&E"
   set vm_args: "rel/vm.args"
 end
