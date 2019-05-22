@@ -16,6 +16,7 @@ defmodule Manager.Application do
     exts = Application.fetch_env!(:manager, :exts)
 
     Logger.info("Using updater #{@updater}")
+
     updater_children =
       case @updater do
         :poll -> [Updater.Poll]
@@ -27,6 +28,8 @@ defmodule Manager.Application do
         supervisor(ExtSupervisor, [exts]),
         worker(ExtStack, [exts])
       ] ++ updater_children
+
+    {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
