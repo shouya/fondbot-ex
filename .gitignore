@@ -28,3 +28,5 @@ build-and-upload.sh
 
 fondbot-ex.service
 
+prod.exs
+
