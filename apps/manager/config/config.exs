@@ -14,7 +14,7 @@ config :manager,
     Extension.Reminder.Manager,
     Extension.Fetcher
   ],
-  updater: :webhook
+  updater: :poll
 
 config :manager, :webhook,
   port: 9786,

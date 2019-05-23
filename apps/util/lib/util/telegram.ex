@@ -132,16 +132,15 @@ defmodule Util.Telegram do
     apply(Nadia, func, [chat_id | args] ++ [opts])
   end
 
-  def edit(msg, opts) when is_list(opts) do
-    edit(msg, opts |> Enum.into(%{}))
+  def edit(msg, reply_markup: reply_markup) do
+    edit(msg, :edit_message_reply_markup, [], reply_markup: reply_markup)
   end
 
-  def edit(msg, %{caption: _} = opts) do
-    edit(msg, :edit_message_caption, [], opts)
+  def edit(msg, [{:caption, caption} | opts]) do
+    edit(msg, :edit_message_caption, [caption], opts)
   end
 
-  def edit(msg, %{text: _} = opts) do
-    {text, opts} = Map.pop(opts, :text)
+  def edit(msg, [{:text, text} | opts]) do
     edit(msg, :edit_message_text, [text], opts)
   end
 

@@ -139,9 +139,14 @@ defmodule Extension.Weather do
     :ok
   end
 
-  def on(%CallbackQuery{data: "weather.aqi." <> city_id} = q, _s) do
-    report = "Not implemented"
-    send_report(q, city_id, report)
+  def on(%CallbackQuery{data: "weather.aqi." <> _city_id} = q, _s) do
+    answer(q, text: "Not implemented")
+    :ok
+  end
+
+  def on(%CallbackQuery{data: "weather.ok"} = q, _s) do
+    answer(q)
+    edit(q.message, reply_markup: keyboard(:inline, []))
     :ok
   end
 
@@ -206,10 +211,15 @@ defmodule Extension.Weather do
 
   def send_report(user_input, city_id, report) do
     report_keyboard = [
-      [{:callback, "Overview", "weather.overview." <> city_id}],
-      [{:callback, "Hourly forecast", "weather.hourly." <> city_id}],
-      [{:callback, "Daily forecast", "weather.daily." <> city_id}],
-      [{:callback, "AQI", "weather.aqi." <> city_id}]
+      [
+        {:callback, "✅", "weather.ok"},
+        {:callback, "Overview", "weather.overview." <> city_id},
+        {:callback, "AQI", "weather.aqi." <> city_id}
+      ],
+      [
+        {:callback, "Hourly", "weather.hourly." <> city_id},
+        {:callback, "Daily", "weather.daily." <> city_id}
+      ]
     ]
 
     case user_input do
