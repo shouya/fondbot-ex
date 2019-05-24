@@ -253,7 +253,7 @@ defmodule Extension.Weather do
 
   def weather_report(msg, state) do
     {:ok, chat_id} = chat_id(msg)
-    Nadia.send_chat_action(chat_id, "typing")
+    chat_action(chat_id, "typing")
 
     state
     |> Map.get(:cities)
@@ -275,12 +275,12 @@ defmodule Extension.Weather do
   def add_location(chat_id, loc, state) do
     case AirVisual.search_city(loc) do
       {:ok, {id, name}} ->
-        Nadia.send_message(chat_id, "Location added (#{name}).")
+        say(chat_id, "Location added (#{name}).")
         city = %{name: name, city_id: id}
         {:ok, Map.update!(state, :cities, &[city | &1])}
 
       {:error, e} ->
-        Nadia.send_message(chat_id, "Unable to find city #{loc}\n#{inspect(e)}")
+        say(chat_id, "Unable to find city #{loc}\n#{inspect(e)}")
         :ok
     end
   end
@@ -292,11 +292,7 @@ defmodule Extension.Weather do
         [[{:request_location, "Send location"}, "Cancel"]]
       )
 
-    Nadia.send_message(
-      chat_id,
-      "Send me a location",
-      reply_markup: keyboard
-    )
+    say(chat_id, "Send me a location", reply_markup: keyboard)
 
     pending = %{}
 
@@ -317,11 +313,7 @@ defmodule Extension.Weather do
         ]
       ])
 
-    Nadia.send_message(
-      chat_id,
-      "Which location do you want to remove?",
-      reply_markup: keyboard
-    )
+    say(chat_id, "Which location do you want to remove?", reply_markup: keyboard)
 
     :ok
   end

@@ -3,6 +3,8 @@ defmodule Extension.Guard do
 
   alias Nadia.Model.{CallbackQuery, InlineQuery, User}
 
+  import Util.Telegram
+
   defstruct [:safe_users, :report_channel, :pending, :blacklist]
 
   @impl true
@@ -58,7 +60,6 @@ defmodule Extension.Guard do
             |> Map.get(:pending)
             |> Map.put(user_id, confirmation)
 
-
           send_warning(chat_id)
           {:break, %{guard | pending: new_pending}}
         end
@@ -81,11 +82,7 @@ defmodule Extension.Guard do
       ]
     ]
 
-    Nadia.send_message(
-      channel_id,
-      message,
-      reply_markup: Util.Telegram.keyboard(:inline, keyboard)
-    )
+    say(channel_id, message, reply_markup: Util.Telegram.keyboard(:inline, keyboard))
 
     [
       user: user,
@@ -96,10 +93,7 @@ defmodule Extension.Guard do
   end
 
   defp send_warning(chat_id) do
-    Nadia.send_message(
-      chat_id,
-      "Unauthorized access!\nThis incidence will be reported."
-    )
+    say(chat_id, "Unauthorized access!\nThis incidence will be reported.")
   end
 
   defp authorized?(user_id, chat_id, %{safe_users: user_ids, report_channel: channel_id}) do
@@ -110,21 +104,14 @@ defmodule Extension.Guard do
          %CallbackQuery{data: "guard.auth." <> user_id} = q,
          %{report_channel: channel_id} = guard
        ) do
-    Util.Telegram.answer(q)
+    answer(q)
     user_id = String.to_integer(user_id)
     confirmation = guard |> Map.fetch!(:pending) |> Map.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
-    Nadia.send_message(
-      channel_id,
-      "The user (name=#{user_name} id=#{user_id}) is authorized"
-    )
-
-    Nadia.send_message(
-      chat_id,
-      "The admin has authorized access from you (#{user_name}), have fun!"
-    )
+    say(channel_id, "The user (name=#{user_name} id=#{user_id}) is authorized")
+    say(chat_id, "The admin has authorized access from you (#{user_name}), have fun!")
 
     guard =
       guard
@@ -143,15 +130,9 @@ defmodule Extension.Guard do
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
-    Nadia.send_message(
-      channel_id,
-      "The user (name=#{user_name} id=#{user_id}) is rejected"
-    )
+    say(channel_id, "The user (name=#{user_name} id=#{user_id}) is rejected")
 
-    Nadia.send_message(
-      chat_id,
-      "The admin has rejected access from you (#{user_name})"
-    )
+    say(chat_id, "The admin has rejected access from you (#{user_name})")
 
     guard =
       guard

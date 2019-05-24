@@ -1,4 +1,6 @@
 defmodule Util.Telegram do
+  require Logger
+
   alias Nadia.Model.{
     Message,
     Chat,
@@ -100,16 +102,22 @@ defmodule Util.Telegram do
     %KeyboardButton{text: text}
   end
 
-  def answer(%CallbackQuery{id: id}, opts \\ []) do
-    spawn(fn -> Nadia.answer_callback_query(id, opts) end)
+  def answer(query, opts \\ [], opts2 \\ [])
+
+  def answer(%CallbackQuery{id: id}, opts, _) do
+    spawn(fn -> bot_request(:answer_callback_query, [id, opts]) end)
   end
 
-  def say(msg, request) do
-    say(msg, request, [])
+  def answer(%InlineQuery{id: id}, results, opts) do
+    bot_request(:answer_inline_query, [id, results, opts])
   end
 
   def reply(%Message{message_id: id} = msg, request, opts \\ []) do
     say(msg, request, [{:reply_to_message_id, id} | opts])
+  end
+
+  def say(msg, request) do
+    say(msg, request, [])
   end
 
   def say(msg, {:audio, audio}, opts) do
@@ -129,7 +137,11 @@ defmodule Util.Telegram do
   end
 
   defp say(%Message{chat: %{id: chat_id}}, func, args, opts) do
-    apply(Nadia, func, [chat_id | args] ++ [opts])
+    say(chat_id, func, args, opts)
+  end
+
+  defp say(chat_id, func, args, opts) when is_integer(chat_id) do
+    bot_request(func, [chat_id | args] ++ [opts])
   end
 
   def edit(msg, reply_markup: reply_markup) do
@@ -149,7 +161,7 @@ defmodule Util.Telegram do
   end
 
   defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
-    apply(Nadia, func, [chat_id, id, nil | args] ++ [Enum.into(opts, [])])
+    bot_request(func, [chat_id, id, nil | args] ++ [Enum.into(opts, [])])
   end
 
   # Like edit, but promote to the latest one, return the new message
@@ -167,6 +179,10 @@ defmodule Util.Telegram do
 
   def delete_message(%Message{chat: %{id: chat_id}, message_id: id}) do
     Nadia.API.request("deleteMessage", chat_id: chat_id, message_id: id)
+  end
+
+  def chat_action(chat_id, action) do
+    bot_request(:send_chat_action, [chat_id, action])
   end
 
   @doc """
@@ -204,7 +220,7 @@ defmodule Util.Telegram do
 
   def reproduce(%Message{text: text} = msg, opts) when not is_nil(text) do
     chat_id = opts[:chat_id] || msg.chat.id
-    Nadia.send_message(chat_id, text)
+    bot_request(:send_message, [chat_id, text])
   end
 
   def escape(text, :html) do
@@ -231,6 +247,22 @@ defmodule Util.Telegram do
   end
 
   def remove_command_suffix(any), do: any
+
+  def bot_request(func, args) do
+    case apply(Nadia, func, args) do
+      :ok ->
+        :ok
+
+      {:ok, t} ->
+        {:ok, t}
+
+      {:error, e} ->
+        Logger.error("Error requesting telegram: #{inspect(e)}")
+        {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+        Sentry.capture_exception(e, stacktrace: stacktrace)
+        {:error, e}
+    end
+  end
 
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"
   defguardp follow_with_text(msg, txt) when binary_part(msg, 1, byte_size(txt)) == txt

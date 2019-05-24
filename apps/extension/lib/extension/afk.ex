@@ -4,6 +4,8 @@ defmodule Extension.AFK do
   alias Nadia.Model.{Message, InlineQuery, InlineQueryResult, InputMessageContent}
   alias Util.InlineResultCollector
 
+  import Util.Telegram
+
   defstruct [
     :afk_at,
     :afk_user,
@@ -104,14 +106,7 @@ defmodule Extension.AFK do
     DateTime.diff(now, last_notify) >= interval
   end
 
-  defp notify_afk(
-         %Message{message_id: id, chat: %{id: chat_id}},
-         %{
-           afk_at: afk_at,
-           afk_user: afk_user,
-           reason: reason
-         }
-       ) do
+  defp notify_afk(msg, %{afk_at: afk_at, afk_user: afk_user, reason: reason}) do
     text =
       :erlang.iolist_to_binary([
         Util.Telegram.user_name(afk_user),
@@ -121,16 +116,11 @@ defmodule Extension.AFK do
         (reason && ["\n*Reason*: ", reason]) || []
       ])
 
-    Nadia.send_message(
-      chat_id,
-      text,
-      reply_to_message_id: id,
-      parse_mode: "Markdown"
-    )
+    say(msg, text, parse_mode: "Markdown")
   end
 
-  defp reply_status(%{message_id: id, chat: %{id: chat_id}}, status) do
+  defp reply_status(msg, status) do
     text = "AFK #{status}"
-    Nadia.send_message(chat_id, text, reply_to_message_id: id)
+    reply(msg, text)
   end
 end

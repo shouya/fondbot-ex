@@ -5,7 +5,7 @@ defmodule Extension.Fetcher do
 
   use Extension
 
-  alias Nadia.Model.InlineQuery
+  alias Nadia.Model.{InlineQuery, InlineQueryResult}
   alias Util.InlineResultCollector
 
   def on(%InlineQuery{query: text} = q, _) do
@@ -95,7 +95,7 @@ defmodule Extension.Fetcher do
   defp get_entity(type, url)
 
   defp get_entity(:photo, url) do
-    %Nadia.Model.InlineQueryResult.Photo{
+    %InlineQueryResult.Photo{
       type: "photo",
       photo_url: url,
       thumb_url: url,
