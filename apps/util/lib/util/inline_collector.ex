@@ -1,6 +1,7 @@
 defmodule Util.InlineResultCollector do
   use GenServer
 
+  import Util.Telegram
   alias Nadia.Model.InlineQueryResult
   require Logger
 
@@ -101,14 +102,10 @@ defmodule Util.InlineResultCollector do
   defp answer_inline_query(collector) do
     cache_time = if collector.disable_cache, do: 1, else: 300
 
-    case Nadia.answer_inline_query(
-           collector.id,
-           collector.results,
-           cache_time: cache_time
-         ) do
-      {:error, e} -> Logger.error("Error when answering query: #{inspect(e)}")
-      _ -> :ok
-    end
+    bot_request(
+      :answer_inline_query,
+      [collector.id, collector.results, [cache_time: cache_time]]
+    )
   end
 
   defp extend_collector(%{timer: timer} = c, duration, max_timeout) do
