@@ -102,6 +102,10 @@ defmodule Extension.Widget.TimeSelector do
     stop_server({:shutdown, {:cancel, msg}})
   end
 
+  defcast callback(_) do
+    noreply()
+  end
+
   defcast message(text), state: %{stage: :set_hr} = s do
     prompt = "Enter the hour you want to set (0-23 or 1-12am/pm):"
     handle_custom_text(text, prompt, :set_hr, s)
@@ -119,6 +123,10 @@ defmodule Extension.Widget.TimeSelector do
     """
 
     handle_custom_text(text, prompt, :custom, s)
+  end
+
+  defcast message(_) do
+    noreply()
   end
 
   defhandleinfo :init, state: %{msg: msg, time: time} do
