@@ -496,7 +496,7 @@ defmodule Extension.Weather.Provider.AirVisual do
       |> Enum.join("\n")
 
     "Weather report for *#{city_name}* " <>
-      "(updated _#{Util.Time.humanize(time)}_)\n\n" <>
+      "(updated _#{Util.Time.format_exact_and_humanize(time)}_)\n\n" <>
       report <>
       "\n\n" <>
       recommends
