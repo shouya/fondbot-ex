@@ -483,7 +483,7 @@ defmodule Extension.Weather.Provider.AirVisual do
       recommends: recommends
     } = info
 
-    recommends =
+    _recommends =
       recommends
       |> Enum.map(fn v -> " - #{v}" end)
       |> Enum.join("\n")
@@ -491,15 +491,16 @@ defmodule Extension.Weather.Provider.AirVisual do
     report =
       criterions
       |> Enum.map(fn {criterion, {_, _, _, text}} ->
-        "*#{criterion}*: " <> text
+        "*#{criterion}*: " <> Util.Telegram.escape(text, :markdown)
       end)
       |> Enum.join("\n")
 
-    "Weather report for *#{city_name}* " <>
-      "(updated _#{Util.Time.format_exact_and_humanize(time)}_)\n\n" <>
-      report <>
-      "\n\n" <>
-      recommends
+    [
+      "Weather report for *#{Util.Telegram.escape(city_name, :markdown)}*",
+      report,
+      "_updated at #{Util.Time.format_exact_and_humanize(time)}_"
+    ]
+    |> Enum.join("\n\n")
   end
 
   defp generate_report("Conditions", current, forecasts) do
@@ -517,21 +518,21 @@ defmodule Extension.Weather.Provider.AirVisual do
     all = [current | forecasts] |> Enum.map(fn %{temperature: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    {curr, min, max, "#{curr}℃ (#{min}—#{max}℃ for next 12 hr)"}
+    {curr, min, max, "#{curr}℃ (#{min}-#{max}℃ for next 12 hr)"}
   end
 
   defp generate_report("Humidity", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{humidity: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    {curr, min, max, "#{curr}% (#{min}—#{max}%)"}
+    {curr, min, max, "#{curr}% (#{min}-#{max}%)"}
   end
 
   defp generate_report("AQI", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{aqi: t} -> t end)
     {min, max} = all |> Enum.min_max()
     curr = hd(all)
-    {curr, min, max, "#{curr}, #{aqi_desc(curr)} (#{min}—#{max})"}
+    {curr, min, max, "#{curr}, #{aqi_desc(curr)} (#{min}-#{max})"}
   end
 
   def aqi_desc(aqi) when 0 <= aqi and aqi < 50, do: "Good"

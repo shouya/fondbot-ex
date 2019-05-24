@@ -1,8 +1,7 @@
 defmodule Extension.AFK do
   use Extension
 
-  alias Nadia.Model.{Message, InlineQuery, InlineQueryResult, InputMessageContent}
-  alias Util.InlineResultCollector
+  alias Nadia.Model.Message
 
   import Util.Telegram
 
