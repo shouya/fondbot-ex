@@ -248,13 +248,25 @@ defmodule Util.Telegram do
 
   def remove_command_suffix(any), do: any
 
-  def bot_request(func, args) do
+  @max_retries 10
+  @retriable_errors [
+    :timeout
+  ]
+  def bot_request(func, args, retries \\ @max_retries) do
     case apply(Nadia, func, args) do
       :ok ->
         :ok
 
       {:ok, t} ->
         {:ok, t}
+
+      {:error, %{reason: reason}} = e when reason in @retriable_errors ->
+        if retries == 0 do
+          e
+        else
+          :timer.sleep(200)
+          bot_request(func, args, retries - 1)
+        end
 
       {:error, e} ->
         Logger.error("Error requesting telegram: #{inspect(e)}")
