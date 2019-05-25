@@ -48,31 +48,27 @@ defmodule Extension.Widget.TimeSelector do
     new_state(%{s | time: new_time})
   end
 
-  defcast callback("5min"), state: state do
-    advance_and_prompt(state, 30)
+  defcast callback("1min"), state: state do
+    advance_and_prompt(state, 60)
   end
 
   defcast callback("10min"), state: state do
     advance_and_prompt(state, 10 * 60)
   end
 
-  defcast callback("30min"), state: state do
-    advance_and_prompt(state, 30 * 60)
-  end
-
   defcast callback("1hr"), state: state do
     advance_and_prompt(state, 60 * 60)
   end
 
-  defcast callback("2hr"), state: state do
-    advance_and_prompt(state, 2 * 60 * 60)
+  defcast callback("24hr"), state: state do
+    advance_and_prompt(state, 24 * 60 * 60)
   end
 
   defcast callback("-1hr"), state: state do
     advance_and_prompt(state, -60 * 60)
   end
 
-  defcast callback("custom"), state: %{msg: msg, time: time} = s do
+  defcast callback("input"), state: %{msg: msg, time: time} = s do
     text = """
     Current time: #{format_time(time)}
     Enter the time you want to set (hh:mm):
@@ -134,7 +130,7 @@ defmodule Extension.Widget.TimeSelector do
     noreply()
   end
 
-  defhandleinfo _any, do: noreply()
+  defhandleinfo(_any, do: noreply())
 
   defp text_to_time(text, curr_time, :set_hr) do
     case Integer.parse(text) do
@@ -217,14 +213,14 @@ defmodule Extension.Widget.TimeSelector do
         {:callback, "now", "reminder.set-time.reset-now"}
       ],
       [
-        {:callback, "5 min", "reminder.set-time.5min"},
+        {:callback, "1 min", "reminder.set-time.1min"},
         {:callback, "10 min", "reminder.set-time.10min"},
-        {:callback, "30 min", "reminder.set-time.30min"},
-        {:callback, "2 hr", "reminder.set-time.1hr"}
+        {:callback, "1 hr", "reminder.set-time.1hr"},
+        {:callback, "24 hr", "reminder.set-time.24hr"}
       ],
       [
         {:callback, "-1 hr", "reminder.set-time.-1hr"},
-        {:callback, "custom", "reminder.set-time.custom"},
+        {:callback, "input", "reminder.set-time.input"},
         {:callback, "done", "reminder.set-time.done"},
         {:callback, "cancel", "reminder.set-time.cancel"}
       ]
