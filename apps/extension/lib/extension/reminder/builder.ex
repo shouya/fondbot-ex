@@ -53,9 +53,9 @@ defmodule Extension.Reminder.Builder do
       )
       when pat in ~w[daily oneshot] do
     answer(q)
-    {:ok, time_selector} = TimeSelector.start_link(msg)
+    {:ok, pid} = TimeSelector.start_link(msg)
     pending = %{pending | recur_pattern: String.to_atom(pat)}
-    {:ok, %{s | stage: :set_time, widget: time_selector, pending: pending}}
+    {:ok, %{s | stage: :set_time, widget: pid, pending: pending}}
   end
 
   def on(%CallbackQuery{data: "reminder.recur.cancel", message: msg} = q, %{stage: :recur} = s) do
@@ -65,15 +65,15 @@ defmodule Extension.Reminder.Builder do
 
   def on(
         %CallbackQuery{data: "reminder.set-time." <> cmd} = q,
-        %{stage: :set_time, widget: time_selector}
+        %{stage: :set_time, widget: pid}
       ) do
     answer(q)
-    TimeSelector.callback(time_selector, cmd)
+    TimeSelector.callback(pid, cmd)
     :ok
   end
 
-  def on(%Message{text: text}, %{stage: :set_time, widget: time_selector}) do
-    TimeSelector.message(time_selector, text)
+  def on(%Message{text: text}, %{stage: :set_time, widget: pid}) do
+    TimeSelector.message(pid, text)
     :ok
   end
 

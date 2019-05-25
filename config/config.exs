@@ -18,3 +18,12 @@ import_config "../apps/*/config/config.exs"
 #       level: :info,
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
+
+
+config :sentry,
+  dsn: System.get_env("SENTRY_DSN"),
+  environment_name: Mix.env(),
+  included_environments: [:prod, :dev],
+  enable_source_code_context: true,
+  root_source_code_path: File.cwd!()
+

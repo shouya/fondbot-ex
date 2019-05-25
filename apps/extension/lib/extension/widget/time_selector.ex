@@ -10,7 +10,7 @@ defmodule Extension.Widget.TimeSelector do
 
     initial_state(%__MODULE__{
       msg: msg,
-      time: Timex.local(),
+      time: Util.Time.now(),
       stage: :init
     })
   end
@@ -43,7 +43,7 @@ defmodule Extension.Widget.TimeSelector do
   end
 
   defcast callback("reset-now"), state: %{msg: msg} = s do
-    new_time = Timex.local()
+    new_time = Util.Time.now()
     prompt({:edit, msg}, new_time)
     new_state(%{s | time: new_time})
   end
@@ -133,6 +133,8 @@ defmodule Extension.Widget.TimeSelector do
     prompt({:edit, msg}, time)
     noreply()
   end
+
+  defhandleinfo _any, do: noreply()
 
   defp text_to_time(text, curr_time, :set_hr) do
     case Integer.parse(text) do
