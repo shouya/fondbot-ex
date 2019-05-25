@@ -3,4 +3,4 @@ use Mix.Config
 config :manager, updater: :webhook
 config :manager, :webhook,
   port: 9786,
-  url: {:system, "WEBHOOK_URL"}
+  url: System.get_env("WEBHOOK_URL")

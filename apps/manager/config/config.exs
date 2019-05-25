@@ -1,7 +1,7 @@
 use Mix.Config
 
 config :nadia,
-  token: {:system, "FONDBOT_TOKEN"}
+  token: System.get_env("FONDBOT_TOKEN")
 
 config :manager,
   exts: [
