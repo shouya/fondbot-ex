@@ -1,13 +1,17 @@
 [Unit]
 Description=Fondbot in Elixir
+After=network.target
 
 [Service]
-Type=forking
-WorkingDirectory=/path/to/fondbot-ex
-EnvironmentFile=/path/to/fondbot-ex/fondbot.env
-ExecStart=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex start
-ExecStop=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex stop
-ExecReload=/path/to/fondbot-ex/fondbot-ex/bin/fondbot_ex reload_config
+Type=simple
+WorkingDirectory=/opt/fondbot-ex
+Environment=RELEASE_MUTABLE_DIR=/opt/fondbot-ex/var
+Environment=LANG=en_US.UTF-8
+Environment=MIX_ENV=prod
+ExecStart=/opt/fondbot-ex/fondbot-ex/bin/fondbot_ex foreground
+Restart=on-failure
+RestartSec=5
+RemainAfterExit=no
 
 [Install]
 WantedBy=multi-user.target

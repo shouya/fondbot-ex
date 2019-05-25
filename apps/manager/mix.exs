@@ -27,7 +27,6 @@ defmodule Manager.MixProject do
   defp deps do
     [
       {:extension, in_umbrella: true},
-      {:confex, "~> 3.4.0"},
       {:plug_cowboy, "~> 2.0"},
       {:jason, "~> 1.1"},
       {:sentry, "~> 7.0"},
