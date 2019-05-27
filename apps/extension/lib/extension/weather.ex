@@ -386,7 +386,7 @@ defmodule Extension.Weather.Provider.AirVisual do
 
     %{
       city_name: city_name,
-      time: current.ts,
+      time: current.ts |> Util.Time.to_local(),
       criterions: criterions,
       recommends: recommends
     }
