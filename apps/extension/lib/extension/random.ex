@@ -6,7 +6,7 @@ defmodule Extension.Random do
   import Util.Telegram
 
   @impl true
-  def on(%Message{text: "/random"} = m, _) do
+  def on(%Message{text: "/rand"} = m, _) do
     btns = [
       {:callback, "🎲", "random.roll"},
       {:callback, "✊🖐✌️", "random.rps"},

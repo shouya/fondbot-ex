@@ -12,6 +12,7 @@ Environment variables required:
 afk - set afk
 noafk - noafk
 weather - query for weather
+rand - feel lucky
 remind_me - set reminder
 list_reminders - list reminders
 add_loc - add location for weather report via GPS
