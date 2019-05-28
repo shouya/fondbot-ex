@@ -12,7 +12,8 @@ config :manager,
     Extension.Weather,
     Extension.Reminder.Builder,
     Extension.Reminder.Manager,
-    Extension.Fetcher
+    Extension.Fetcher,
+    Extension.Random
   ],
   updater: :poll
 
