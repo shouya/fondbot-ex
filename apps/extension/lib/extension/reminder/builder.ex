@@ -6,7 +6,7 @@ defmodule Extension.Reminder.Builder do
   alias Extension.Widget.TimeSelector
   alias Extension.Reminder.Manager
 
-  defstruct [:reminders, :stage, :widget, :pending]
+  defstruct [:stage, :widget, :pending]
 
   def new() do
     %__MODULE__{}
@@ -14,6 +14,14 @@ defmodule Extension.Reminder.Builder do
 
   def before_init() do
     Process.flag(:trap_exit, true)
+  end
+
+  def on(%Message{text: "/remind_me", reply_to_message: quoted}, %{widget: w} = s)
+      when not is_nil(quoted) do
+    unless is_nil(w), do: Process.exit(w, :kill)
+
+    pending = %{setup_msg: nil, recur_pattern: nil}
+    on(quoted, %{s | stage: :remind_msg, pending: pending})
   end
 
   def on(%Message{text: "/remind_me"} = msg, %{widget: w} = s) do
