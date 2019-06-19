@@ -528,6 +528,10 @@ defmodule Extension.Weather.Provider.AirVisual do
     {curr, min, max, "#{curr}% (#{min}-#{max}%)"}
   end
 
+  defp generate_report("AQI", %{aqi: nil}, _forecasts) do
+    {nil, nil, nil, "Unavailable"}
+  end
+
   defp generate_report("AQI", current, forecasts) do
     all = [current | forecasts] |> Enum.map(fn %{aqi: t} -> t end)
     {min, max} = all |> Enum.min_max()
@@ -557,13 +561,14 @@ defmodule Extension.Weather.Provider.AirVisual do
     end
   end
 
-  defp parse_condition(%{
-         "ts" => ts,
-         "aqi" => aqi,
-         "temperature" => temperature,
-         "humidity" => humidity,
-         "icon" => condition
-       }) do
+  defp parse_condition(
+         %{
+           "ts" => ts,
+           "temperature" => temperature,
+           "humidity" => humidity,
+           "icon" => condition
+         } = con
+       ) do
     temp =
       case temperature do
         %{"min" => min, "max" => max} -> {min, max}
@@ -572,7 +577,7 @@ defmodule Extension.Weather.Provider.AirVisual do
 
     %Condition{
       ts: Timex.parse!(ts, "{ISO:Extended}"),
-      aqi: aqi,
+      aqi: Map.get(con, "aqi"),
       temperature: temp,
       humidity: humidity,
       condition: condition
