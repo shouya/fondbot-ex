@@ -17,9 +17,13 @@ defmodule Extension.Guard do
 
         safe_users =
           [report_channel | Keyword.get(conf, :safe_users, [])]
-          |> Enum.map(fn str ->
-            {val, _} = Integer.parse(str)
-            val
+          |> Enum.map(fn
+            str when is_binary(str) ->
+              {val, _} = Integer.parse(str)
+              val
+
+            other ->
+              other
           end)
 
         %__MODULE__{

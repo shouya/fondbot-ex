@@ -5,7 +5,9 @@ defmodule Fondbot.MixProject do
     [
       apps_path: "apps",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases(),
+      version: "0.1.0"
     ]
   end
 
@@ -18,6 +20,18 @@ defmodule Fondbot.MixProject do
     [
       # {:edeliver, ">= 1.6.0"},
       {:distillery, "~> 2.0"}
+    ]
+  end
+
+  defp releases() do
+    [
+      fondbot: [
+        applications: [
+          manager: :permanent,
+          extension: :permanent,
+          util: :permanent
+        ]
+      ]
     ]
   end
 end

@@ -1,6 +1,5 @@
 defmodule Extension.Reminder.Worker do
   use ExActor.GenServer
-  alias Extension.Reminder.Controller
 
   import Util.Telegram
   import Util.Number, only: [ordinal: 1]
@@ -130,7 +129,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   defcall :save_worker_state, state: %{id: id} = state do
-    Controller.save_worker_state(id, state)
+    Extension.Reminder.Controller.save_worker_state(id, state)
     reply(:ok)
   end
 
