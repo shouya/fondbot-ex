@@ -19,22 +19,35 @@ defmodule Extension.Reminder.Worker do
     :killed
   ]
 
-  defstart start_link(param) do
+  def start_link(%{id: id} = param) do
+    GenServer.start_link(
+      __MODULE__,
+      param,
+      name: {:via, Registry, {:reminders, id}}
+    )
+  end
+
+  def init(param) do
     state =
-      __MODULE__
-      |> struct!(Map.merge(%{setup_time: Util.Time.now(), repeat_count: 0}, param))
+      struct!(
+        __MODULE__,
+        Map.merge(
+          %{setup_time: Util.Time.now(), repeat_count: 0},
+          param
+        )
+      )
 
     {kickoff(state, :timer), kickoff(state, :repeat)}
     |> case do
       {{:stop, _}, {:stop, _}} ->
         send(self(), :suicide)
-        initial_state(state)
+        {:ok, state}
 
       {_, {:ok, s}} ->
-        initial_state(s)
+        {:ok, s}
 
       {{:ok, s}, _} ->
-        initial_state(s)
+        {:ok, s}
     end
   end
 

@@ -3,7 +3,7 @@ defmodule Extension.Reminder.Manager do
 
   import Util.Telegram
 
-  alias Extension.Reminder.Worker
+  alias Extension.Reminder.{Controller, Worker}
   alias Nadia.Model.{Message, CallbackQuery}
 
   def before_init() do
@@ -11,22 +11,19 @@ defmodule Extension.Reminder.Manager do
   end
 
   def new() do
-    %{}
+    nil
   end
 
   def from_saved(workers) do
-    workers
-    |> Enum.flat_map(fn %{id: id} = conf ->
-      case Worker.start_link(conf) do
-        {:ok, pid} -> [{id, pid}]
-        _ -> []
-      end
+    Enum.each(workers, fn %{id: id} = conf ->
+      Controller.start_worker(id, conf)
     end)
-    |> Enum.into(%{})
+
+    nil
   end
 
-  def save(workers) do
-    config = get_workers_config(workers)
+  def save(_) do
+    config = get_workers_config()
     Extension.Store.save_state(__MODULE__, config)
   end
 
@@ -36,22 +33,9 @@ defmodule Extension.Reminder.Manager do
   end
 
   def spawn_worker(%{} = params) do
-    GenServer.call(__MODULE__, {:spawn_worker, params})
-  end
-
-  def handle_call({:spawn_worker, payload}, _, workers) do
     id = Nanoid.generate()
-    param = Map.put(payload, :id, id)
-
-    case Worker.start_link(param) do
-      {:ok, pid} ->
-        send(self(), :save)
-        new_workers = Map.put(workers, id, pid)
-        {:reply, :ok, new_workers}
-
-      {:error, e} ->
-        {:reply, {:error, e}, workers}
-    end
+    params = Map.put(params, :id, id)
+    Controller.start_worker(id, params)
   end
 
   def on(%CallbackQuery{data: "reminder.manager.cancel"} = q, _) do
@@ -60,20 +44,18 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
-  def on(%CallbackQuery{data: "reminder.manager.delete." <> id} = q, s) do
+  def on(%CallbackQuery{data: "reminder.manager.delete." <> id} = q, _) do
     answer(q)
 
-    case Map.fetch(s, id) do
-      {:ok, pid} ->
-        Process.exit(pid, :normal)
-        new_s = Map.delete(s, id)
+    case Controller.terminate_worker(id) do
+      {:ok, _} ->
         edit(q.message, text: "Reminder deleted.")
-        {:ok, new_s}
 
-      _ ->
+      {:error, _} ->
         edit(q.message, text: "Reminder not found.")
-        :ok
     end
+
+    :ok
   end
 
   def on(%CallbackQuery{data: "reminder.manager.ack"} = q, _) do
@@ -81,15 +63,13 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
-  def on(%CallbackQuery{data: "reminder.manager.detail." <> id} = q, s) do
+  def on(%CallbackQuery{data: "reminder.manager.detail." <> id} = q, _) do
     answer(q)
 
-    case Map.fetch(s, id) do
-      {:ok, pid} ->
-        conf =
-          Worker.get_config(pid)
-          |> Map.drop([:notify_msg, :setup_msg])
-          |> inspect(pretty: true)
+    Registry.lookup(:reminders, id)
+    |> case do
+      [{_pid, conf}] ->
+        conf = Map.drop(conf, [:notify_msg, :setup_msg])
 
         keyboard =
           keyboard(:inline, [
@@ -100,7 +80,7 @@ defmodule Extension.Reminder.Manager do
           ])
 
         edit(q.message,
-          text: "```\n#{conf}\n```",
+          text: "```\n#{inspect(conf, pretty: true)}\n```",
           parse_mode: "Markdown",
           reply_markup: keyboard
         )
@@ -114,23 +94,24 @@ defmodule Extension.Reminder.Manager do
   end
 
   # reminder.worker.<ref_id>.<command>
-  def on(%CallbackQuery{data: "reminder.worker." <> id_and_cmd} = q, s) do
+  def on(%CallbackQuery{data: "reminder.worker." <> id_and_cmd} = q, _) do
     answer(q)
 
     with [id, command] <- id_and_cmd |> String.split("."),
-         {:ok, pid} <- Map.fetch(s, id) do
+         [{pid, _}] <- Registry.lookup(:reminders, id) do
       Worker.on_callback(pid, command)
-      {:ok, s}
+      :ok
     else
       _ -> :ok
     end
   end
 
-  def on(%Message{text: "/list_reminders"} = m, workers) do
+  def on(%Message{text: "/list_reminders"} = m, _) do
     import Util.Time
 
-    workers
-    |> get_workers_config()
+    confs = get_workers_config()
+
+    confs
     |> Enum.sort_by(fn %{setup_time: t} -> t end)
     |> Enum.map(fn c = %{id: id, setup_time: st, time: t, recur_pattern: rp} ->
       digest = message_digest(c.setup_msg)
@@ -152,12 +133,9 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
-  def on_info({:EXIT, from, _reason}, workers) do
+  def on_info({:EXIT, _from, _reason}, s) do
     send(self(), :save)
-
-    dead_children = for {id, ^from} <- workers, do: id
-    new_workers = Map.drop(workers, dead_children)
-    {:noreply, new_workers}
+    {:noreply, s}
   end
 
   def on_info(:save, workers) do
@@ -165,12 +143,7 @@ defmodule Extension.Reminder.Manager do
     {:noreply, workers}
   end
 
-  def get_workers_config(workers) do
-    workers
-    |> Task.async_stream(fn {_, pid} ->
-      if Process.alive?(pid), do: Worker.get_config(pid)
-    end)
-    |> Enum.filter(&match?({:ok, _}, &1))
-    |> Enum.map(fn {:ok, v} -> v end)
+  def get_workers_config() do
+    Enum.map(Controller.all_workers(), fn {_pid, conf} -> conf end)
   end
 end
