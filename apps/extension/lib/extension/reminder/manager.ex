@@ -11,11 +11,11 @@ defmodule Extension.Reminder.Manager do
   end
 
   def from_saved(workers) do
-    IO.inspect(workers)
-
     Enum.each(workers, fn %{id: id} = conf ->
-      {:ok, pid} = Controller.start_worker(id, conf)
-      Worker.save_worker_state(pid)
+      case Controller.start_worker(id, conf) do
+        {:ok, pid} -> Worker.save_worker_state(pid)
+        _ -> :ok
+      end
     end)
 
     send(self(), :save)
@@ -28,19 +28,8 @@ defmodule Extension.Reminder.Manager do
   end
 
   @doc "callback when workers changed state to save current states"
-  def worker_state_changed(id \\ :all)
-
-  def worker_state_changed(:all) do
-    Controller.all_workers()
-    |> Enum.each(fn {pid, _} -> Worker.save_worker_state(pid) end)
-
-    send(__MODULE__, :save)
-  end
-
-  def worker_state_changed(id) do
-    {pid, _} = Controller.lookup_worker(id)
-    Worker.save_worker_state(pid)
-    send(__MODULE__, :save)
+  def worker_state_changed(id \\ :all) do
+    send(__MODULE__, {:worker_state_changed, id})
   end
 
   def spawn_worker(%{} = params) do
@@ -154,6 +143,21 @@ defmodule Extension.Reminder.Manager do
   def on_info(:save, workers) do
     save(workers)
     {:noreply, workers}
+  end
+
+  def on_info({:worker_state_changed, :all}, s) do
+    Controller.all_workers()
+    |> Enum.each(fn {pid, _} -> Worker.save_worker_state(pid) end)
+
+    send(__MODULE__, :save)
+    {:noreply, s}
+  end
+
+  def on_info({:worker_state_changed, id}, s) do
+    {pid, _} = Controller.lookup_worker(id)
+    Worker.save_worker_state(pid)
+    send(__MODULE__, :save)
+    {:noreply, s}
   end
 
   def get_workers_config() do

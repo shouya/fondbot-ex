@@ -46,8 +46,7 @@ defmodule Extension.Reminder.Worker do
     {kickoff(state, :timer), kickoff(state, :repeat)}
     |> case do
       {{:stop, _}, {:stop, _}} ->
-        send(self(), :suicide)
-        {:ok, state}
+        {:stop, :normal}
 
       {_, {:ok, s}} ->
         {:ok, s}
