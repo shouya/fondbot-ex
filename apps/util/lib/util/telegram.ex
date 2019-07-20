@@ -140,7 +140,7 @@ defmodule Util.Telegram do
     say(chat_id, func, args, opts)
   end
 
-  defp say(chat_id, func, args, opts) when is_integer(chat_id) do
+  defp say(chat_id, func, args, opts) do
     bot_request(func, [chat_id | args] ++ [opts])
   end
 

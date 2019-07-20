@@ -6,19 +6,19 @@ defmodule Extension.Reminder.Manager do
   alias Extension.Reminder.{Controller, Worker}
   alias Nadia.Model.{Message, CallbackQuery}
 
-  def before_init() do
-    Process.flag(:trap_exit, true)
-  end
-
   def new() do
     nil
   end
 
   def from_saved(workers) do
+    IO.inspect(workers)
+
     Enum.each(workers, fn %{id: id} = conf ->
-      Controller.start_worker(id, conf)
+      {:ok, pid} = Controller.start_worker(id, conf)
+      Worker.save_worker_state(pid)
     end)
 
+    send(self(), :save)
     nil
   end
 
@@ -28,14 +28,27 @@ defmodule Extension.Reminder.Manager do
   end
 
   @doc "callback when workers changed state to save current states"
-  def worker_state_changed() do
+  def worker_state_changed(id \\ :all)
+
+  def worker_state_changed(:all) do
+    Controller.all_workers()
+    |> Enum.each(fn {pid, _} -> Worker.save_worker_state(pid) end)
+
+    send(__MODULE__, :save)
+  end
+
+  def worker_state_changed(id) do
+    {pid, _} = Controller.lookup_worker(id)
+    Worker.save_worker_state(pid)
     send(__MODULE__, :save)
   end
 
   def spawn_worker(%{} = params) do
     id = Nanoid.generate()
     params = Map.put(params, :id, id)
-    Controller.start_worker(id, params)
+    {:ok, pid} = Controller.start_worker(id, params)
+    Worker.save_worker_state(pid)
+    send(__MODULE__, :save)
   end
 
   def on(%CallbackQuery{data: "reminder.manager.cancel"} = q, _) do
@@ -48,7 +61,7 @@ defmodule Extension.Reminder.Manager do
     answer(q)
 
     case Controller.terminate_worker(id) do
-      {:ok, _} ->
+      :ok ->
         edit(q.message, text: "Reminder deleted.")
 
       {:error, _} ->
@@ -66,9 +79,9 @@ defmodule Extension.Reminder.Manager do
   def on(%CallbackQuery{data: "reminder.manager.detail." <> id} = q, _) do
     answer(q)
 
-    Registry.lookup(:reminders, id)
+    Controller.lookup_worker(id)
     |> case do
-      [{_pid, conf}] ->
+      {_pid, conf} ->
         conf = Map.drop(conf, [:notify_msg, :setup_msg])
 
         keyboard =
@@ -98,7 +111,7 @@ defmodule Extension.Reminder.Manager do
     answer(q)
 
     with [id, command] <- id_and_cmd |> String.split("."),
-         [{pid, _}] <- Registry.lookup(:reminders, id) do
+         {pid, _} <- Controller.lookup_worker(id) do
       Worker.on_callback(pid, command)
       :ok
     else

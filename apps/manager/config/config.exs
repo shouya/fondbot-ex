@@ -10,9 +10,13 @@ config :manager,
     Extension.DevUtil,
     Extension.AFK,
     Extension.Weather,
-    Extension.Reminder.Supervisor,
+    Extension.Reminder.Builder,
+    Extension.Reminder.Manager,
     Extension.Fetcher,
     Extension.Random
+  ],
+  extra_supervisors: [
+    Extension.Reminder.Supervisor
   ],
   updater: :poll
 

@@ -13,9 +13,18 @@ defmodule Extension.Guard do
   def new() do
     case @guard_conf do
       {:ok, conf} ->
+        report_channel = Keyword.fetch!(conf, :report_channel)
+
+        safe_users =
+          [report_channel | Keyword.get(conf, :safe_users, [])]
+          |> Enum.map(fn str ->
+            {val, _} = Integer.parse(str)
+            val
+          end)
+
         %__MODULE__{
-          safe_users: Keyword.fetch!(conf, :safe_users),
-          report_channel: Keyword.fetch!(conf, :report_channel),
+          safe_users: safe_users,
+          report_channel: report_channel,
           pending: %{},
           blacklist: []
         }

@@ -1,5 +1,6 @@
 defmodule Extension.Reminder.Worker do
   use ExActor.GenServer
+  alias Extension.Reminder.Controller
 
   import Util.Telegram
   import Util.Number, only: [ordinal: 1]
@@ -28,14 +29,19 @@ defmodule Extension.Reminder.Worker do
   end
 
   def init(param) do
+    default_param = %{setup_time: Util.Time.now(), repeat_count: 0}
+
     state =
-      struct!(
-        __MODULE__,
-        Map.merge(
-          %{setup_time: Util.Time.now(), repeat_count: 0},
-          param
-        )
-      )
+      param
+      |> case do
+        %__MODULE__{} -> Map.from_struct(param)
+        _ -> param
+      end
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+      |> Map.merge(default_param, fn _k, v1, _v2 -> v1 end)
+
+    state = struct!(__MODULE__, state)
 
     {kickoff(state, :timer), kickoff(state, :repeat)}
     |> case do
@@ -78,11 +84,11 @@ defmodule Extension.Reminder.Worker do
   end
 
   defhandleinfo :suicide do
-    stop_server(:shutdown)
+    stop_server(:normal)
   end
 
   defhandleinfo :remind, state: state do
-    Extension.Reminder.Manager.worker_state_changed()
+    Extension.Reminder.Manager.worker_state_changed(state.id)
 
     text = """
     #{message_digest(state.setup_msg)}
@@ -124,6 +130,11 @@ defmodule Extension.Reminder.Worker do
     |> new_state()
   end
 
+  defcall :save_worker_state, state: %{id: id} = state do
+    Controller.save_worker_state(id, state)
+    reply(:ok)
+  end
+
   # triggered when a inline button on specific reminder is clicked
   defcast on_callback("done"), state: state do
     Process.cancel_timer(state.repeat_ref)
@@ -135,10 +146,10 @@ defmodule Extension.Reminder.Worker do
           reply_to_message_id: state.setup_msg.message_id
         )
 
-        stop_server(:shutdown)
+        stop_server(:normal)
 
       {:ok, state} ->
-        Extension.Reminder.Manager.worker_state_changed()
+        Extension.Reminder.Manager.worker_state_changed(state.id)
         {:ok, time} = next_reminder(state)
 
         edit(state.notify_msg,
@@ -169,7 +180,7 @@ defmodule Extension.Reminder.Worker do
       reply_to_message_id: state.setup_msg.message_id
     )
 
-    stop_server(:shutdown)
+    stop_server(:normal)
   end
 
   defcast on_callback("snooze-5"), state: state do
@@ -185,7 +196,7 @@ defmodule Extension.Reminder.Worker do
   end
 
   def snooze(state, duration) do
-    Extension.Reminder.Manager.worker_state_changed()
+    Extension.Reminder.Manager.worker_state_changed(state.id)
     next_alert = Timex.shift(Util.Time.now(), seconds: duration)
 
     text = """
@@ -215,15 +226,11 @@ defmodule Extension.Reminder.Worker do
   end
 
   def repeat(state, sec) do
-    Extension.Reminder.Manager.worker_state_changed()
+    Extension.Reminder.Manager.worker_state_changed(state.id)
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
     repeat_time = Timex.shift(DateTime.utc_now(), seconds: sec)
     repeat_ref = Process.send_after(self(), :remind, sec * 1000)
     %{state | repeat_time: repeat_time, repeat_ref: repeat_ref}
-  end
-
-  defcall get_config(), state: s do
-    s |> Map.from_struct() |> reply()
   end
 
   def next_reminder(%{time: time, recur_pattern: :oneshot}) do

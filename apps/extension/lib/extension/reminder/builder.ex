@@ -12,6 +12,10 @@ defmodule Extension.Reminder.Builder do
     %__MODULE__{}
   end
 
+  def from_saved(_) do
+    new()
+  end
+
   def before_init() do
     Process.flag(:trap_exit, true)
   end

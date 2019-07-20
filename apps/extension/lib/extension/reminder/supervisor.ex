@@ -13,9 +13,7 @@ defmodule Extension.Reminder.Supervisor do
        [
          strategy: :one_for_one,
          name: Extension.Reminder.WorkerSupervisor
-       ]},
-      Extension.Reminder.Manager,
-      Extension.Reminder.Builder
+       ]}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
