@@ -1,4 +1,6 @@
 defmodule Extension.Reminder.Controller do
+  require Logger
+
   alias Extension.Reminder.{Worker, WorkerSupervisor}
 
   @reg_name :reminders
@@ -14,6 +16,7 @@ defmodule Extension.Reminder.Controller do
         {:error, {:worker_not_exist, id}}
 
       {pid, _conf} ->
+        Logger.warn("Someone asked me to terminate worker: #{id}")
         DynamicSupervisor.terminate_child(WorkerSupervisor, pid)
     end
   end

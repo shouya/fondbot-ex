@@ -1,5 +1,6 @@
 defmodule Extension.Reminder.Worker do
-  use ExActor.GenServer
+  require Logger
+  use GenServer
 
   import Util.Telegram
   import Util.Number, only: [ordinal: 1]
@@ -27,6 +28,7 @@ defmodule Extension.Reminder.Worker do
     )
   end
 
+  @impl GenServer
   def init(param) do
     default_param = %{setup_time: Util.Time.now(), repeat_count: 0}
 
@@ -45,6 +47,7 @@ defmodule Extension.Reminder.Worker do
     {kickoff(state, :timer), kickoff(state, :repeat)}
     |> case do
       {{:stop, _}, {:stop, _}} ->
+        Logger.info("kickoff timer and repeat both failed, stopping: #{inspect(state)}")
         {:stop, :normal}
 
       {_, {:ok, s}} ->
@@ -77,15 +80,13 @@ defmodule Extension.Reminder.Worker do
     if diff > 0 do
       {:ok, repeat(state, diff)}
     else
+      Logger.info("Kickoff failed (diff <= 0): #{inspect(state)}")
       {:stop, state}
     end
   end
 
-  defhandleinfo :suicide do
-    stop_server(:normal)
-  end
-
-  defhandleinfo :remind, state: state do
+  @impl GenServer
+  def handle_info(:remind, state) do
     Extension.Reminder.Manager.worker_state_changed(state.id)
 
     text = """
@@ -119,22 +120,34 @@ defmodule Extension.Reminder.Worker do
 
     if state.notify_msg, do: delete_message(state.notify_msg)
 
-    state
-    |> repeat(@default_repeat_duration)
-    |> Map.merge(%{
-      notify_msg: msg,
-      repeat_count: state.repeat_count + 1
-    })
-    |> new_state()
+    new_state =
+      state
+      |> repeat(@default_repeat_duration)
+      |> Map.merge(%{
+        notify_msg: msg,
+        repeat_count: state.repeat_count + 1
+      })
+
+    {:noreply, new_state}
   end
 
-  defcall :save_worker_state, state: %{id: id} = state do
+  def save_worker_state(worker) do
+    GenServer.call(worker, :save_worker_state)
+  end
+
+  @impl GenServer
+  def handle_call(:save_worker_state, _from, %{id: id} = state) do
     Extension.Reminder.Controller.save_worker_state(id, state)
-    reply(:ok)
+    {:reply, :ok, state}
   end
 
-  # triggered when a inline button on specific reminder is clicked
-  defcast on_callback("done"), state: state do
+  def on_callback(worker, message) do
+    GenServer.cast(worker, {:on_callback, message})
+  end
+
+  @doc "triggered when a inline button on specific reminder is clicked"
+  @impl GenServer
+  def handle_cast({:on_callback, "done"}, state) do
     Process.cancel_timer(state.repeat_ref)
 
     case kickoff(state, :timer) do
@@ -144,7 +157,7 @@ defmodule Extension.Reminder.Worker do
           reply_to_message_id: state.setup_msg.message_id
         )
 
-        stop_server(:normal)
+        {:stop, :normal, state}
 
       {:ok, state} ->
         Extension.Reminder.Manager.worker_state_changed(state.id)
@@ -159,18 +172,19 @@ defmodule Extension.Reminder.Worker do
           reply_to_message_id: state.setup_msg.message_id
         )
 
-        state
-        |> Map.merge(%{
-          repeat_count: 0,
-          repeat_ref: nil,
-          repeat_time: nil,
-          notify_msg: nil
-        })
-        |> new_state()
+        new_state = %{
+          state
+          | repeat_count: 0,
+            repeat_ref: nil,
+            repeat_time: nil,
+            notify_msg: nil
+        }
+
+        {:noreply, new_state}
     end
   end
 
-  defcast on_callback("close"), state: state do
+  def handle_cast({:on_callback, "close"}, state) do
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
 
     edit(state.notify_msg,
@@ -178,18 +192,18 @@ defmodule Extension.Reminder.Worker do
       reply_to_message_id: state.setup_msg.message_id
     )
 
-    stop_server(:normal)
+    {:stop, :normal, state}
   end
 
-  defcast on_callback("snooze-5"), state: state do
+  def handle_cast({:on_callback, "snooze-5"}, state) do
     snooze(state, 5 * 60)
   end
 
-  defcast on_callback("snooze-30"), state: state do
+  def handle_cast({:on_callback, "snooze-30"}, state) do
     snooze(state, 30 * 60)
   end
 
-  defcast on_callback("snooze-60"), state: state do
+  def handle_cast({:on_callback, "snooze-60"}, state) do
     snooze(state, 60 * 60)
   end
 
@@ -218,9 +232,8 @@ defmodule Extension.Reminder.Worker do
         ])
     )
 
-    state
-    |> repeat(duration)
-    |> new_state()
+    new_state = repeat(state, duration)
+    {:noreply, new_state}
   end
 
   def repeat(state, sec) do
