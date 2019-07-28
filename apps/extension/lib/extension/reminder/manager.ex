@@ -68,8 +68,7 @@ defmodule Extension.Reminder.Manager do
   def on(%CallbackQuery{data: "reminder.manager.detail." <> id} = q, _) do
     answer(q)
 
-    Controller.lookup_worker(id)
-    |> case do
+    case Controller.lookup_worker(id) do
       {_pid, conf} ->
         conf = Map.drop(conf, [:notify_msg, :setup_msg])
 
@@ -99,7 +98,7 @@ defmodule Extension.Reminder.Manager do
   def on(%CallbackQuery{data: "reminder.worker." <> id_and_cmd} = q, _) do
     answer(q)
 
-    with [id, command] <- id_and_cmd |> String.split("."),
+    with [id, command] <- String.split(id_and_cmd, "."),
          {pid, _} <- Controller.lookup_worker(id) do
       Worker.on_callback(pid, command)
       :ok
@@ -133,11 +132,6 @@ defmodule Extension.Reminder.Manager do
     end
 
     :ok
-  end
-
-  def on_info({:EXIT, _from, _reason}, s) do
-    send(self(), :save)
-    {:noreply, s}
   end
 
   def on_info(:save, s) do

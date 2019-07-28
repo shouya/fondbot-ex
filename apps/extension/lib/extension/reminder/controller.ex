@@ -6,7 +6,12 @@ defmodule Extension.Reminder.Controller do
   @reg_name :reminders
 
   def start_worker(id, param) do
-    spec = %{id: id, start: {Worker, :start_link, [param]}}
+    spec = %{
+      id: id,
+      start: {Worker, :start_link, [param]},
+      restart: :transient,
+      type: :worker
+    }
     DynamicSupervisor.start_child(WorkerSupervisor, spec)
   end
 
@@ -16,7 +21,6 @@ defmodule Extension.Reminder.Controller do
         {:error, {:worker_not_exist, id}}
 
       {pid, _conf} ->
-        Logger.warn("Someone asked me to terminate worker: #{id}")
         DynamicSupervisor.terminate_child(WorkerSupervisor, pid)
     end
   end

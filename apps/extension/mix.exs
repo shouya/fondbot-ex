@@ -29,7 +29,8 @@ defmodule Extension.MixProject do
       {:util, in_umbrella: true},
       {:nanoid, "~> 2.0.1"},
       {:poison, "~> 3.1"},
-      {:exactor, "~> 2.2.4"}
+      {:exactor, "~> 2.2.4"},
+      {:recon, "~> 2.5.0"}
     ]
   end
 end

@@ -48,6 +48,10 @@ defmodule Extension.Widget.TimeSelector do
     new_state(%{s | time: new_time})
   end
 
+  defcast callback("20sec"), state: state do
+    advance_and_prompt(state, 20)
+  end
+
   defcast callback("1min"), state: state do
     advance_and_prompt(state, 60)
   end
@@ -208,7 +212,6 @@ defmodule Extension.Widget.TimeSelector do
     reminder: [
       [
         {:callback, "set hr", "reminder.set-time.set-hr"},
-        {:callback, "set min", "reminder.set-time.set-min"},
         {:callback, "min->0", "reminder.set-time.reset-min"},
         {:callback, "now", "reminder.set-time.reset-now"}
       ],

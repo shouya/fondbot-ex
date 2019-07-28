@@ -54,7 +54,7 @@ defmodule Extension.Reminder.Worker do
     repeat_ref = kickoff(state.repeat_time, :remind)
 
     if is_nil(time_ref) and is_nil(repeat_ref) do
-      Logger.info("Failed to kickoff: #{state}")
+      Logger.info("Failed to kickoff: #{inspect(state)}")
       {:stop, :normal}
     else
       {:ok, %{state | repeat_ref: repeat_ref, time_ref: time_ref}}
@@ -260,8 +260,8 @@ defmodule Extension.Reminder.Worker do
   end
 
   @impl true
-  def terminate(reason, state) do
-    Logger.info("Worker stopping (#{inspect(reason)}): #{inspect(state)}")
+  def terminate(reason, _state) do
+    Logger.info("Reminder worker terminating (#{inspect(reason)})")
     {:stop, reason}
   end
 end
