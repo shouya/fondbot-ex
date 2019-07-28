@@ -1,4 +1,149 @@
 defmodule Extension.Widget.TimeSelector do
+  defmodule NaturalTimeParser do
+    import NimbleParsec
+
+    ws = string(" ") |> repeat() |> ignore()
+    int2 = integer(min: 1, max: 2)
+
+    ampm = choice([string("am"), string("pm")])
+
+    rel_day =
+      choice([
+        string("today"),
+        string("tomorrow"),
+        replace(string("tmr"), "tomorrow")
+      ])
+
+    weekday =
+      choice([
+        string("monday"),
+        string("tuesday"),
+        string("wednesday"),
+        string("thursday"),
+        string("friday"),
+        string("saturday"),
+        string("sunday"),
+        replace(string("mon"), "monday"),
+        replace(string("tue"), "tuesday"),
+        replace(string("wed"), "wednesday"),
+        replace(string("thu"), "thursday"),
+        replace(string("fri"), "friday"),
+        replace(string("sat"), "saturday"),
+        replace(string("sun"), "sunday")
+      ])
+
+    rel_adv = choice([string("this"), string("next")])
+
+    time =
+      choice([
+        int2
+        |> concat(ignore(string(":")))
+        |> concat(int2)
+        |> concat(ws)
+        |> concat(ampm)
+        |> tag(:hm_ap),
+        int2 |> concat(ws) |> concat(ampm) |> tag(:h_ap),
+        int2 |> concat(ignore(string(":"))) |> concat(int2) |> tag(:hm)
+      ])
+
+    day =
+      choice([
+        rel_day |> tag(:rel_day),
+        rel_adv |> concat(ws) |> concat(weekday) |> tag(:rel_weekday),
+        weekday |> tag(:weekday)
+      ])
+
+    defparsec(
+      :datetime,
+      choice([
+        day |> concat(ws) |> concat(time) |> tag(:day_time),
+        time |> concat(ws) |> concat(day) |> tag(:time_day),
+        time |> tag(:time_only)
+      ])
+    )
+
+    def parse(str) do
+      case datetime(str) do
+        {:ok, result, _, _, _, _} ->
+          parse_datetime(result)
+
+        _ ->
+          nil
+      end
+    end
+
+    defp parse_datetime(day_time: [day, time]) do
+      date = parse_day([day])
+      time = parse_time([time])
+      Timex.local() |> Timex.set(date: date, time: time)
+    end
+
+    defp parse_datetime(time_day: [time, day]) do
+      date = parse_day([day])
+      time = parse_time([time])
+      Timex.local() |> Timex.set(date: date, time: time)
+    end
+
+    defp parse_datetime(time_only: [time]) do
+      time = parse_time([time])
+      Timex.local() |> Timex.set(time: time)
+    end
+
+    defp parse_day(rel_day: ["today"]) do
+      Timex.local() |> Timex.to_date()
+    end
+
+    defp parse_day(rel_day: ["tomorrow"]) do
+      Timex.local() |> Timex.to_date() |> Timex.shift(days: 1)
+    end
+
+    defp parse_day(weekday: [weekday]) do
+      parse_day(rel_weekday: ["", weekday])
+    end
+
+    defp parse_day(rel_weekday: [adv, weekday]) do
+      curr_day = Timex.weekday(Timex.local())
+      target_day = Timex.day_to_num(weekday)
+
+      offset =
+        case adv do
+          "" -> rem(target_day - curr_day + 7, 7)
+          "this" -> target_day - curr_day
+          "next" -> target_day + 7 - curr_day
+        end
+
+      Timex.local()
+      |> Timex.to_date()
+      |> Timex.shift(days: offset)
+    end
+
+    defp parse_time(h_ap: [h, ap]) do
+      parse_time(hm_ap: [h, 0, ap])
+    end
+
+    defp parse_time(hm_ap: [h, m, "am"]) do
+      Timex.local()
+      |> Timex.set(hour: h, minute: m, second: 0)
+      |> to_time()
+    end
+
+    defp parse_time(hm_ap: [h, m, "pm"]) do
+      Timex.local()
+      |> Timex.set(hour: h + 12, minute: m, second: 0)
+      |> to_time()
+    end
+
+    defp parse_time(hm: [h, m]) do
+      Timex.local()
+      |> Timex.set(hour: h, minute: m, second: 0)
+      |> to_time()
+    end
+
+    defp to_time(datetime) do
+      {datetime.hour, datetime.minute, datetime.second}
+    end
+  end
+
   use ExActor.GenServer
 
   import Util.Telegram
@@ -75,7 +220,8 @@ defmodule Extension.Widget.TimeSelector do
   defcast callback("input"), state: %{msg: msg, time: time} = s do
     text = """
     Current time: #{format_time(time)}
-    Enter the time you want to set (hh:mm):
+    Enter the time you want to set (free form):
+    e.g. 11:20, tmr 8am, next tue 10pm
     """
 
     ask(msg, text)
@@ -118,8 +264,8 @@ defmodule Extension.Widget.TimeSelector do
 
   defcast message(text), state: %{stage: :custom} = s do
     prompt = """
-    Enter the time you want to set (HH:MM):
-    HH: 0-23, MM: 0-59
+    Enter the time you want to set (free form):
+    e.g. 11:20, tmr 8am, next tue 10pm
     """
 
     handle_custom_text(text, prompt, :custom, s)
@@ -168,12 +314,12 @@ defmodule Extension.Widget.TimeSelector do
     end
   end
 
-  defp text_to_time(text, curr_time, :custom) do
-    with {hr, ":" <> min} when 0 <= hr and hr <= 23 <- Integer.parse(text),
-         {min, ""} when 0 <= min and min <= 59 <- Integer.parse(min) do
-      Timex.set(curr_time, hour: hr, minute: min, second: 0)
-    else
-      _ -> :invalid
+  defp text_to_time(text, _curr_time, :custom) do
+    IO.inspect({text, NaturalTimeParser.parse(text)})
+
+    case NaturalTimeParser.parse(text) do
+      nil -> :invalid
+      t -> t
     end
   end
 
