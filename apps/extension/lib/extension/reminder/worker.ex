@@ -53,7 +53,12 @@ defmodule Extension.Reminder.Worker do
 
     repeat_ref = kickoff(state.repeat_time, :remind)
 
-    {:ok, %{state | repeat_ref: repeat_ref, time_ref: time_ref}}
+    if is_nil(time_ref) and is_nil(repeat_ref) do
+      Logger.info("Failed to kickoff: #{state}")
+      {:stop, :normal}
+    else
+      {:ok, %{state | repeat_ref: repeat_ref, time_ref: time_ref}}
+    end
   end
 
   def kickoff(nil, _message), do: nil
@@ -127,7 +132,7 @@ defmodule Extension.Reminder.Worker do
   @doc "triggered when a inline button on specific reminder is clicked"
   @impl GenServer
   def handle_cast({:on_callback, "done"}, state) do
-        Process.cancel_timer(state.repeat_ref)
+    Process.cancel_timer(state.repeat_ref)
 
     case next_reminder(state.time, state.recur_pattern) do
       :stop ->
@@ -141,7 +146,7 @@ defmodule Extension.Reminder.Worker do
         {:stop, :normal, state}
 
       {:ok, time} ->
-    Extension.Reminder.Manager.worker_state_changed(state.id)
+        Extension.Reminder.Manager.worker_state_changed(state.id)
         time_ref = kickoff(time, :remind)
 
         edit(state.notify_msg,
