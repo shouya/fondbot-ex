@@ -140,9 +140,9 @@ defmodule Extension.Reminder.Manager do
     {:noreply, s}
   end
 
-  def on_info(:save, workers) do
-    save(workers)
-    {:noreply, workers}
+  def on_info(:save, s) do
+    save(nil)
+    {:noreply, s}
   end
 
   def on_info({:worker_state_changed, :all}, s) do

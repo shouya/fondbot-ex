@@ -7,9 +7,9 @@ defmodule Extension.Guard do
 
   defstruct [:safe_users, :report_channel, :pending, :blacklist]
 
-  @impl true
   @guard_conf Application.fetch_env(:extension, :guard)
 
+  @impl true
   def new() do
     case @guard_conf do
       {:ok, conf} ->

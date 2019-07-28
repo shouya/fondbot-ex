@@ -12,6 +12,7 @@ defmodule Extension.Reminder.Worker do
     :setup_msg,
     :notify_msg,
     :time,
+    :time_ref,
     :recur_pattern,
     :setup_time,
     :repeat_count,
@@ -44,45 +45,23 @@ defmodule Extension.Reminder.Worker do
 
     state = struct!(__MODULE__, state)
 
-    {kickoff(state, :timer), kickoff(state, :repeat)}
-    |> case do
-      {{:stop, _}, {:stop, _}} ->
-        Logger.info("kickoff timer and repeat both failed, stopping: #{inspect(state)}")
-        {:stop, :normal}
+    time_ref =
+      case next_reminder(state.time, state.recur_pattern) do
+        {:ok, remind_time} -> kickoff(remind_time, :remind)
+        _ -> nil
+      end
 
-      {_, {:ok, s}} ->
-        {:ok, s}
+    repeat_ref = kickoff(state.repeat_time, :remind)
 
-      {{:ok, s}, _} ->
-        {:ok, s}
-    end
+    {:ok, %{state | repeat_ref: repeat_ref, time_ref: time_ref}}
   end
 
-  def kickoff(state, :timer) do
-    case next_reminder(state) do
-      :stop ->
-        {:stop, state}
+  def kickoff(nil, _message), do: nil
 
-      {:ok, time} ->
-        delay = Timex.diff(time, Util.Time.now(), :milliseconds)
-        Process.send_after(self(), :remind, delay)
-        {:ok, state}
-    end
-  end
-
-  def kickoff(state = %{repeat_time: nil}, :repeat) do
-    {:stop, state}
-  end
-
-  def kickoff(state = %{repeat_time: repeat_time}, :repeat) do
-    diff = Timex.diff(repeat_time, DateTime.utc_now(), :seconds)
-
-    if diff > 0 do
-      {:ok, repeat(state, diff)}
-    else
-      Logger.info("Kickoff failed (diff <= 0): #{inspect(state)}")
-      {:stop, state}
-    end
+  def kickoff(time, message) do
+    delay = Timex.diff(time, Util.Time.now(), :milliseconds)
+    ref = Process.send_after(self(), message, delay)
+    if Process.read_timer(ref), do: ref, else: nil
   end
 
   @impl GenServer
@@ -148,20 +127,22 @@ defmodule Extension.Reminder.Worker do
   @doc "triggered when a inline button on specific reminder is clicked"
   @impl GenServer
   def handle_cast({:on_callback, "done"}, state) do
-    Process.cancel_timer(state.repeat_ref)
+        Process.cancel_timer(state.repeat_ref)
 
-    case kickoff(state, :timer) do
-      {:stop, _} ->
+    case next_reminder(state.time, state.recur_pattern) do
+      :stop ->
         edit(state.notify_msg,
           text: "Reminder finished. (on #{ordinal(state.repeat_count)} alert)",
           reply_to_message_id: state.setup_msg.message_id
         )
 
+        Logger.info("Next reminder not exist, stopping")
+
         {:stop, :normal, state}
 
-      {:ok, state} ->
-        Extension.Reminder.Manager.worker_state_changed(state.id)
-        {:ok, time} = next_reminder(state)
+      {:ok, time} ->
+    Extension.Reminder.Manager.worker_state_changed(state.id)
+        time_ref = kickoff(time, :remind)
 
         edit(state.notify_msg,
           text: """
@@ -174,7 +155,9 @@ defmodule Extension.Reminder.Worker do
 
         new_state = %{
           state
-          | repeat_count: 0,
+          | time: time,
+            time_ref: time_ref,
+            repeat_count: 0,
             repeat_ref: nil,
             repeat_time: nil,
             notify_msg: nil
@@ -240,11 +223,12 @@ defmodule Extension.Reminder.Worker do
     Extension.Reminder.Manager.worker_state_changed(state.id)
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
     repeat_time = Timex.shift(DateTime.utc_now(), seconds: sec)
-    repeat_ref = Process.send_after(self(), :remind, sec * 1000)
-    %{state | repeat_time: repeat_time, repeat_ref: repeat_ref}
+    ref = kickoff(repeat_time, :remind)
+    %{state | repeat_time: repeat_time, repeat_ref: ref}
   end
 
-  def next_reminder(%{time: time, recur_pattern: :oneshot}) do
+  @spec next_reminder(Timex.t(), :onshot | :daily) :: {:ok, Timex.t()} | :stop
+  def next_reminder(time, :oneshot) do
     if Timex.before?(time, DateTime.utc_now()) do
       :stop
     else
@@ -252,7 +236,7 @@ defmodule Extension.Reminder.Worker do
     end
   end
 
-  def next_reminder(%{time: time, recur_pattern: :daily}) do
+  def next_reminder(time, :daily) do
     now = DateTime.utc_now()
 
     time =
@@ -268,5 +252,11 @@ defmodule Extension.Reminder.Worker do
     else
       {:ok, time}
     end
+  end
+
+  @impl true
+  def terminate(reason, state) do
+    Logger.info("Worker stopping (#{inspect(reason)}): #{inspect(state)}")
+    {:stop, reason}
   end
 end
