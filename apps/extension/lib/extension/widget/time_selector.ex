@@ -65,7 +65,7 @@ defmodule Extension.Widget.TimeSelector do
     def parse(str, rel \\ Util.Time.now()) do
       case datetime(str) do
         {:ok, result, _, _, _, _} ->
-          parse_datetime(result, rel)
+          parse_datetime(rel, result)
 
         _ ->
           nil
