@@ -62,47 +62,47 @@ defmodule Extension.Widget.TimeSelector do
       ])
     )
 
-    def parse(str) do
+    def parse(str, rel \\ Util.Time.now()) do
       case datetime(str) do
         {:ok, result, _, _, _, _} ->
-          parse_datetime(result)
+          parse_datetime(result, rel)
 
         _ ->
           nil
       end
     end
 
-    defp parse_datetime(day_time: [day, time]) do
-      date = parse_day([day])
-      time = parse_time([time])
-      Timex.local() |> Timex.set(date: date, time: time)
+    defp parse_datetime(now, day_time: [day, time]) do
+      date = parse_day(now, [day])
+      time = parse_time(now, [time])
+      Timex.set(now, date: date, time: time)
     end
 
-    defp parse_datetime(time_day: [time, day]) do
-      date = parse_day([day])
-      time = parse_time([time])
-      Timex.local() |> Timex.set(date: date, time: time)
+    defp parse_datetime(now, time_day: [time, day]) do
+      date = parse_day(now, [day])
+      time = parse_time(now, [time])
+      Timex.set(now, date: date, time: time)
     end
 
-    defp parse_datetime(time_only: [time]) do
-      time = parse_time([time])
-      Timex.local() |> Timex.set(time: time)
+    defp parse_datetime(now, time_only: [time]) do
+      time = parse_time(now, [time])
+      Timex.set(now, time: time)
     end
 
-    defp parse_day(rel_day: ["today"]) do
-      Timex.local() |> Timex.to_date()
+    defp parse_day(now, rel_day: ["today"]) do
+      Timex.to_date(now)
     end
 
-    defp parse_day(rel_day: ["tomorrow"]) do
-      Timex.local() |> Timex.to_date() |> Timex.shift(days: 1)
+    defp parse_day(now, rel_day: ["tomorrow"]) do
+      now |> Timex.to_date() |> Timex.shift(days: 1)
     end
 
-    defp parse_day(weekday: [weekday]) do
-      parse_day(rel_weekday: ["", weekday])
+    defp parse_day(now, weekday: [weekday]) do
+      parse_day(now, rel_weekday: ["", weekday])
     end
 
-    defp parse_day(rel_weekday: [adv, weekday]) do
-      curr_day = Timex.weekday(Timex.local())
+    defp parse_day(now, rel_weekday: [adv, weekday]) do
+      curr_day = Timex.weekday(now)
       target_day = Timex.day_to_num(weekday)
 
       offset =
@@ -112,29 +112,29 @@ defmodule Extension.Widget.TimeSelector do
           "next" -> target_day + 7 - curr_day
         end
 
-      Timex.local()
+      now
       |> Timex.to_date()
       |> Timex.shift(days: offset)
     end
 
-    defp parse_time(h_ap: [h, ap]) do
-      parse_time(hm_ap: [h, 0, ap])
+    defp parse_time(now, h_ap: [h, ap]) do
+      parse_time(now, hm_ap: [h, 0, ap])
     end
 
-    defp parse_time(hm_ap: [h, m, "am"]) do
-      Timex.local()
-      |> Timex.set(hour: h, minute: m, second: 0)
+    defp parse_time(now, hm_ap: [h, m, "am"]) do
+      now
+      |> Timex.set(hour: rem(h, 12), minute: m, second: 0)
       |> to_time()
     end
 
-    defp parse_time(hm_ap: [h, m, "pm"]) do
-      Timex.local()
-      |> Timex.set(hour: h + 12, minute: m, second: 0)
+    defp parse_time(now, hm_ap: [h, m, "pm"]) do
+      now
+      |> Timex.set(hour: rem(h, 12) + 12, minute: m, second: 0)
       |> to_time()
     end
 
-    defp parse_time(hm: [h, m]) do
-      Timex.local()
+    defp parse_time(now, hm: [h, m]) do
+      now
       |> Timex.set(hour: h, minute: m, second: 0)
       |> to_time()
     end
