@@ -53,18 +53,18 @@ defmodule Extension.Widget.TimeSelector do
         weekday |> tag(:weekday)
       ])
 
-    defparsec(
-      :datetime,
-      choice([
-        day |> concat(ws) |> concat(time) |> tag(:day_time),
-        time |> concat(ws) |> concat(day) |> tag(:time_day),
-        time |> tag(:time_only)
-      ])
-    )
+    defparsec :datetime,
+              choice([
+                day |> concat(ws) |> concat(time) |> tag(:day_time),
+                time |> concat(ws) |> concat(day) |> tag(:time_day),
+                time |> tag(:time_only)
+              ])
 
     def parse(str, rel \\ Util.Time.now()) do
+      str = str |> String.downcase() |> String.trim()
+
       case datetime(str) do
-        {:ok, result, _, _, _, _} ->
+        {:ok, result, "", _, _, _} ->
           parse_datetime(rel, result)
 
         _ ->
@@ -271,7 +271,8 @@ defmodule Extension.Widget.TimeSelector do
     handle_custom_text(text, prompt, :custom, s)
   end
 
-  defcast message(_) do
+  defcast message(text), state: %{stage: :init} = s do
+    handle_custom_text(text, "", :custom, s)
     noreply()
   end
 
