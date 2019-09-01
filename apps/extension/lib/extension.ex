@@ -31,36 +31,22 @@ defmodule Extension do
     save: 1
   ]
 
-  defmacro __using__(_) do
+  defp impl_callback(preset, {func, loc, args} = call) do
+    self = __MODULE__
+    new_args = [Macro.escape(preset), Macro.escape(__MODULE__)] ++ args
+    new_call = {func, loc, new_args}
+
+    quote do
+      @impl unquote(self)
+      def unquote(call), do: unquote(self).DefaultAction.unquote(new_call)
+    end
+  end
+
+  defmacro impl_genserver_boilerplate() do
     self = __MODULE__
 
     quote do
       use GenServer
-      @behaviour unquote(self)
-
-      # Callbacks for Ext
-      @impl unquote(self)
-      def on(update, state), do: unquote(self).DefaultAction.on(__MODULE__, update, state)
-      @impl unquote(self)
-      def on_info(msg, state), do: unquote(self).DefaultAction.on_info(__MODULE__, msg, state)
-      @impl unquote(self)
-      def new(), do: unquote(self).DefaultAction.new(__MODULE__)
-      @impl unquote(self)
-      def save(state), do: unquote(self).DefaultAction.save(__MODULE__, state)
-      @impl unquote(self)
-      def from_saved(save), do: unquote(self).DefaultAction.from_saved(__MODULE__, save)
-      @impl unquote(self)
-      def before_init(), do: unquote(self).DefaultAction.before_init(__MODULE__)
-      @impl unquote(self)
-      def after_init(state), do: unquote(self).DefaultAction.after_init(__MODULE__, state)
-
-      defoverridable on: 2,
-                     on_info: 2,
-                     new: 0,
-                     from_saved: 1,
-                     save: 1,
-                     before_init: 0,
-                     after_init: 1
 
       def start_link(_) do
         GenServer.start_link(__MODULE__, nil, name: __MODULE__)
@@ -80,6 +66,35 @@ defmodule Extension do
       def handle_info(msg, state) do
         unquote(self).handle_info(__MODULE__, msg, state)
       end
+    end
+  end
+
+  defmacro __using__(opts) do
+    self = __MODULE__
+    preset = Keyword.get(opts, :preset, :default)
+
+    quote do
+      @behaviour unquote(self)
+
+      # Callbacks for Ext
+      unquote(impl_callback(preset, quote(do: on(update, state))))
+      unquote(impl_callback(preset, quote(do: on(update, state))))
+      unquote(impl_callback(preset, quote(do: on_info(msg, state))))
+      unquote(impl_callback(preset, quote(do: new())))
+      unquote(impl_callback(preset, quote(do: save(state))))
+      unquote(impl_callback(preset, quote(do: from_saved(save))))
+      unquote(impl_callback(preset, quote(do: before_init())))
+      unquote(impl_callback(preset, quote(do: after_init(state))))
+
+      defoverridable on: 2,
+                     on_info: 2,
+                     new: 0,
+                     from_saved: 1,
+                     save: 1,
+                     before_init: 0,
+                     after_init: 1
+
+      unquote(self).impl_genserver_boilerplate()
     end
   end
 
@@ -131,12 +146,12 @@ defmodule Extension do
 
   defmodule DefaultAction do
     @moduledoc "Default actions for a extension"
-    def on(_ext, _update, _state), do: :break
-    def on_info(_ext, _message, state), do: {:noreply, state}
-    def new(_ext), do: nil
-    def save(ext, state), do: Extension.Store.save_state(ext, state)
-    def from_saved(_ext, save), do: save
-    def before_init(_ext), do: nil
-    def after_init(_ext, state), do: state
+    def on(_ext, _preset, _update, _state), do: :break
+    def on_info(_ext, _preset, _msg, state), do: {:noreply, state}
+    def new(_ext, _preset), do: nil
+    def save(ext, _preset, state), do: Extension.Store.save_state(ext, state)
+    def from_saved(_ext, _preset, save), do: save
+    def before_init(_ext, _preset), do: nil
+    def after_init(_ext, _preset, state), do: state
   end
 end
