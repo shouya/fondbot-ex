@@ -22,6 +22,7 @@ config :manager,
   updater: :poll
 
 config :manager, :webhook,
+  ip: {127, 0, 0, 1},
   port: 9786,
   url: "https://7c857279.ngrok.io"
 

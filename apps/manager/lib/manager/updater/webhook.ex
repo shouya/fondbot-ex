@@ -1,4 +1,6 @@
 defmodule Manager.Updater.Webhook do
+  require Logger
+
   defmodule Route do
     use Plug.Router
 
@@ -57,13 +59,20 @@ defmodule Manager.Updater.Webhook do
   @webhook_conf Application.get_env(:manager, :webhook, [])
   def init(_) do
     url = Keyword.fetch!(@webhook_conf, :url)
-    spawn(fn -> Nadia.set_webhook(url: url) end)
+
+    case Nadia.set_webhook(url: url) do
+      :ok -> Logger.info("Webhook set to #{url}")
+      {:error, e} -> raise "Unable to set webhook: #{inspect(e)}"
+    end
 
     children = [
       Plug.Cowboy.child_spec(
         scheme: :http,
         plug: Route,
-        options: [port: Keyword.get(@webhook_conf, :port, 9786)]
+        options: [
+          ip: Keyword.get(@webhook_conf, :ip, {127, 0, 0, 1}),
+          port: Keyword.get(@webhook_conf, :port, 9786)
+        ]
       )
     ]
 
