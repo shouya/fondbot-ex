@@ -13,7 +13,8 @@ config :manager,
     Extension.Reminder.Builder,
     Extension.Reminder.Manager,
     Extension.Fetcher,
-    Extension.Random
+    Extension.Random,
+    Extension.Cleanser
   ],
   extra_supervisors: [
     Extension.Reminder.Supervisor

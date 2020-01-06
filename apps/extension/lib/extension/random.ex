@@ -10,11 +10,14 @@ defmodule Extension.Random do
     btns = [
       {:callback, "🎲", "random.roll"},
       {:callback, "✊🖐✌️", "random.rps"},
-      {:callback, "[0,1)", "random.0.0-1.0"},
+      {:callback, "[0,1)", "random.0.0-1.0"}
     ]
-    reply(m,
-    "Use the buttons below to generate something random",
-    reply_markup: keyboard(:inline, [btns]))
+
+    reply(
+      m,
+      "Use the buttons below to generate something random",
+      reply_markup: keyboard(:inline, [btns])
+    )
   end
 
   def on(%CallbackQuery{data: "random.0.0-1.0"} = q, _) do

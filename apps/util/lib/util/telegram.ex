@@ -231,14 +231,24 @@ defmodule Util.Telegram do
     |> String.replace("\"", "&quot;")
   end
 
+  @markdown_special_chars "_*`["
   def escape(text, :markdown) do
-    text
-    |> String.replace("*", "\*")
-    |> String.replace("_", "\_")
-    |> String.replace("[", "\[")
-    |> String.replace("]", "\]")
-    |> String.replace("(", "\(")
-    |> String.replace(")", "\)")
+    @markdown_special_chars
+    |> String.codepoints()
+    |> Enum.reduce(
+      text,
+      fn c, text -> String.replace(text, c, "\\#{c}") end
+    )
+  end
+
+  @markdown_v2_special_chars "_*[]()~`"
+  def escape(text, :markdown_v2) do
+    @markdown_v2_special_chars
+    |> String.codepoints()
+    |> Enum.reduce(
+      text,
+      fn c, text -> String.replace(text, c, "\\#{c}") end
+    )
   end
 
   def remove_command_suffix(%Message{text: t} = m) when is_binary(t) do
