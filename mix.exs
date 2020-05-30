@@ -18,6 +18,7 @@ defmodule Fondbot.MixProject do
   # Run "mix help deps" for examples and options.
   defp deps do
     [
+      {:confex, "~> 3.4"}
     ]
   end
 
@@ -25,6 +26,7 @@ defmodule Fondbot.MixProject do
     [
       fondbot: [
         applications: [
+          confex: :permanent,
           manager: :permanent,
           extension: :permanent,
           util: :permanent

@@ -21,7 +21,7 @@ import_config "../apps/*/config/config.exs"
 
 
 config :sentry,
-  dsn: System.get_env("SENTRY_DSN"),
+  dsn: {:system, "SENTRY_DSN"},
   environment_name: Mix.env(),
   included_environments: [:prod, :dev],
   enable_source_code_context: true,

@@ -18,7 +18,7 @@ defmodule Manager.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:confex, :logger],
       mod: {Manager.Application, []}
     ]
   end
@@ -30,7 +30,8 @@ defmodule Manager.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:jason, "~> 1.1"},
       {:sentry, "~> 7.0"},
-      {:nadia, github: "zhyu/nadia"}
+      {:nadia, github: "zhyu/nadia"},
+      {:confex, "~> 3.4"}
     ]
   end
 end

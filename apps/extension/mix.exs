@@ -18,7 +18,7 @@ defmodule Extension.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:confex, :logger],
       mod: {Extension.Application, []}
     ]
   end
@@ -31,7 +31,8 @@ defmodule Extension.MixProject do
       {:poison, "~> 3.1"},
       {:exactor, "~> 2.2.4"},
       {:nimble_parsec, "~> 0.5.0"},
-      {:recon, "~> 2.5.0"}
+      {:recon, "~> 2.5.0"},
+      {:confex, "~> 3.4"}
     ]
   end
 end

@@ -31,4 +31,4 @@ use Mix.Config
 
 config :extension, :guard,
   safe_users: [],
-  report_channel: System.get_env("ADMIN_CHANNEL")
+  report_channel: {:system, "ADMIN_CHANNEL"}
