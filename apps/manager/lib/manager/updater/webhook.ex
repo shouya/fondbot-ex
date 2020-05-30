@@ -56,9 +56,9 @@ defmodule Manager.Updater.Webhook do
     Supervisor.start_link(__MODULE__, nil)
   end
 
-  @webhook_conf Application.get_env(:manager, :webhook, [])
   def init(_) do
-    url = Keyword.fetch!(@webhook_conf, :url)
+    webhook_conf = Application.get_env(:manager, :webhook, [])
+    url = Keyword.fetch!(webhook_conf, :url)
 
     case Nadia.set_webhook(url: url) do
       :ok -> Logger.info("Webhook set to #{url}")
@@ -70,8 +70,8 @@ defmodule Manager.Updater.Webhook do
         scheme: :http,
         plug: Route,
         options: [
-          ip: Keyword.get(@webhook_conf, :ip, {127, 0, 0, 1}),
-          port: Keyword.get(@webhook_conf, :port, 9786)
+          ip: Keyword.get(webhook_conf, :ip, {127, 0, 0, 1}),
+          port: Keyword.get(webhook_conf, :port, 9786)
         ]
       )
     ]
