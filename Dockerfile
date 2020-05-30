@@ -16,8 +16,8 @@ RUN mix compile
 RUN mix release
 
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates curl
+FROM elixir:alpine
+RUN apk --no-cache add curl git bash
 
 RUN mkdir /app /data
 
