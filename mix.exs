@@ -26,7 +26,6 @@ defmodule Fondbot.MixProject do
     [
       fondbot: [
         applications: [
-          confex: :permanent,
           manager: :permanent,
           extension: :permanent,
           util: :permanent
