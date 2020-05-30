@@ -1,7 +1,7 @@
 FROM elixir:alpine AS build
 
 RUN mkdir /src
-ADD apps config mix.exs mix.lock /src
+ADD apps config mix.exs mix.lock /src/
 WORKDIR /src
 ENV MIX_ENV=prod
 
