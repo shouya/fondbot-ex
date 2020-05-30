@@ -1,3 +1,3 @@
 use Mix.Config
 
-config :extension, data_dir: "/data"
+# config :extension, data_dir: "/data"

@@ -12,6 +12,8 @@ defmodule Manager.Application do
   require Logger
 
   def start(_type, _args) do
+    Confex.resolve_env!(:manager)
+
     updater = Application.fetch_env!(:manager, :updater)
     exts = Application.fetch_env!(:manager, :exts)
 

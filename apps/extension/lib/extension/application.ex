@@ -6,6 +6,8 @@ defmodule Extension.Application do
   use Application
 
   def start(_type, _args) do
+    Confex.resolve_env!(:extension)
+
     children = [
       Extension.Store,
       Util.InlineResultCollector,
