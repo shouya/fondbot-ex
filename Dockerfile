@@ -5,6 +5,7 @@ ADD apps config mix.exs mix.lock /src/
 WORKDIR /src
 ENV MIX_ENV=prod
 
+RUN mix local.hex --force && mix local.rebar --force
 RUN mix release
 
 
