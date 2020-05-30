@@ -32,3 +32,6 @@ use Mix.Config
 config :extension, :guard,
   safe_users: [],
   report_channel: {:system, "ADMIN_CHANNEL"}
+
+import_config "#{Mix.env()}.exs"
+

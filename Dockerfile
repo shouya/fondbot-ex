@@ -19,7 +19,10 @@ RUN mix release
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates curl
 
-RUN mkdir /app
+RUN mkdir /app /data
+
+EXPOSE 9786/tcp
+VOLUME /data
 
 COPY --from=build /src/_build/prod/rel/fondbot/ /app
 WORKDIR /app
