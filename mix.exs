@@ -18,8 +18,6 @@ defmodule Fondbot.MixProject do
   # Run "mix help deps" for examples and options.
   defp deps do
     [
-      # {:edeliver, ">= 1.6.0"},
-      {:distillery, "~> 2.0"}
     ]
   end
 
