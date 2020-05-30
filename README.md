@@ -1,10 +1,11 @@
 # Fondbot
 
-Environment variables required:
+Environment variables required on runtime:
 
 - FONDBOT_TOKEN
 - ADMIN_CHANNEL
 - WEBHOOK_URL (if using webhook as updater)
+- SENTRY_DSN
 
 ## Commands
 
