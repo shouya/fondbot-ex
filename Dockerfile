@@ -6,11 +6,10 @@ WORKDIR /src
 ENV MIX_ENV=prod
 RUN mix local.hex --force && mix local.rebar --force
 
-ADD config mix.exs mix.lock /src/
-RUN mix deps.get
-RUN mix compile
+COPY mix.exs mix.lock ./
+COPY apps/ ./apps
+COPY config/ ./config
 
-ADD apps /src/apps
 RUN mix deps.get
 RUN mix compile
 RUN mix release
@@ -24,8 +23,8 @@ RUN mkdir /app /data
 EXPOSE 9786/tcp
 VOLUME /data
 
-COPY --from=build /src/_build/prod/rel/fondbot/ /app
+COPY --from=build /src/_build/prod/rel/fondbot .
 WORKDIR /app
-CMD /app/bin/fondbot start
+CMD ./bin/fondbot start
 
 
