@@ -11,14 +11,14 @@ defmodule Manager.Application do
 
   require Logger
 
-  @updater Application.fetch_env!(:manager, :updater)
   def start(_type, _args) do
+    updater = Application.fetch_env!(:manager, :updater)
     exts = Application.fetch_env!(:manager, :exts)
 
-    Logger.info("Using updater #{@updater}")
+    Logger.info("Using updater #{updater}")
 
     updater_children =
-      case @updater do
+      case updater do
         :poll -> [Updater.Poll]
         :webhook -> [Updater.Webhook]
       end

@@ -7,8 +7,10 @@ ENV MIX_ENV=prod
 RUN mix local.hex --force && mix local.rebar --force
 
 ADD config mix.exs mix.lock /src/
-ADD apps /src/apps
+RUN mix deps.get
+RUN mix compile
 
+ADD apps /src/apps
 RUN mix deps.get
 RUN mix compile
 RUN mix release
