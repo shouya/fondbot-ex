@@ -3,6 +3,10 @@ RUN apk --no-cache add ca-certificates curl git
 
 RUN mkdir /src
 WORKDIR /src
+
+VOLUME ./deps
+VOLUME ./_build
+
 ENV MIX_ENV=prod
 RUN mix local.hex --force && mix local.rebar --force
 
@@ -23,8 +27,8 @@ RUN mkdir /app /data
 EXPOSE 9786/tcp
 VOLUME /data
 
-COPY --from=build /src/_build/prod/rel/fondbot .
 WORKDIR /app
+COPY --from=build /src/_build/prod/rel/fondbot ./
 CMD ./bin/fondbot start
 
 
