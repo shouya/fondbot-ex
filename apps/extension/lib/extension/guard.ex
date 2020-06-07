@@ -144,7 +144,6 @@ defmodule Extension.Guard do
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
     say(channel_id, "The user (name=#{user_name} id=#{user_id}) is rejected")
-
     say(chat_id, "The admin has rejected access from you (#{user_name})")
 
     guard =

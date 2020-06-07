@@ -11,6 +11,8 @@ defmodule Extension.Cleanser do
     uri = parse_uri(text)
 
     cond do
+      is_nil(uri) -> throw(:skip)
+      match?({:error, _, _}, uri) -> throw(:skip)
       is_nil(uri[:scheme]) || is_nil(uri[:host]) -> throw(:skip)
       is_nil(uri[:query]) -> throw(:skip)
       uri[:path] == "" -> throw(:skip)
@@ -18,26 +20,11 @@ defmodule Extension.Cleanser do
     end
 
     case cleanse(uri) do
-      {:changed, uri} ->
+      {:changed, new_uri} ->
         # delete_message(m)
-        new_uri_text = generate_uri(uri)
 
-        message =
-          "<i>The link you sent contains tracking pieces " <>
-            "and therefore removed.</i>\n\n" <>
-            "Original: <s>#{escape(text, :html)}</s>\n\n" <>
-            "Cleansed: #{escape(new_uri_text, :html)}"
-
-        buttons = [[{:url, "Visit original", text}, {:url, "Visit cleansed", new_uri_text}]]
-
-        reply(
-          m,
-          message,
-          disable_web_page_preview: true,
-          reply_markup: keyboard(:inline, buttons),
-          parse_mode: "HTML"
-        )
-
+        new_uri = generate_uri(new_uri)
+        reply(m, text, new_uri)
         throw(:done)
 
       _ ->
@@ -114,6 +101,31 @@ defmodule Extension.Cleanser do
   end
 
   defp cleanse(_, uri), do: {:cont, uri}
+
+  defp send_reply(message, old_uri, new_uri) do
+    text =
+      "<i>The link you sent contains tracking pieces " <>
+        "and therefore removed.</i>\n\n" <>
+        "Original: <s>#{escape(old_uri, :html)}</s>\n\n" <>
+        "Cleansed: #{escape(new_uri, :html)}"
+
+    buttons = [
+      [
+        {:url, "Visit original", old_uri},
+        {:url, "Visit cleansed", new_uri}
+      ]
+    ]
+
+    reply(
+      message,
+      text,
+      disable_web_page_preview: true,
+      reply_markup: keyboard(:inline, buttons),
+      parse_mode: "HTML"
+    )
+  end
+
+  defp parse_uri(text) when not is_binary(text), do: nil
 
   defp parse_uri(text) do
     map = :uri_string.parse(text)
