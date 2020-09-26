@@ -144,6 +144,10 @@ defmodule Util.Telegram do
     bot_request(func, [chat_id | args] ++ [opts])
   end
 
+  def forward(%Message{chat: %{id: chat_id}, message_id: id}, to_chat_id) do
+    bot_request(:forward_message, [to_chat_id, chat_id, id])
+  end
+
   def edit(msg, reply_markup: reply_markup) do
     edit(msg, :edit_message_reply_markup, [], reply_markup: reply_markup)
   end

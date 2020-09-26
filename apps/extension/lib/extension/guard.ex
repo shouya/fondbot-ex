@@ -82,9 +82,10 @@ defmodule Extension.Guard do
   defp report_incidence(payload, %{id: user_id} = user, %{report_channel: channel_id}) do
     user_name = Util.Telegram.user_name(user)
 
+    forward(payload, channel_id)
+
     message =
       "An unauthorized user (#{user_name}) is sending message to fondbot!\n" <>
-        "#{inspect(payload)}\n\n" <>
         "If you want authorize future messages in that chat, " <>
         "click the botton below"
 
@@ -124,7 +125,7 @@ defmodule Extension.Guard do
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
     say(channel_id, "The user (name=#{user_name} id=#{user_id}) is authorized")
-    say(chat_id, "The admin has authorized access from you (#{user_name}), have fun!")
+    say(chat_id, "The admin has authorized access for you, have fun!")
 
     guard =
       guard
@@ -132,12 +133,16 @@ defmodule Extension.Guard do
       |> Map.update!(:safe_users, &[user_id | &1])
 
     {:break, guard}
+  rescue
+    _ ->
+      {:break, guard}
   end
 
   defp handle_guard_command(
-         %CallbackQuery{data: "guard.reject." <> user_id},
+         %CallbackQuery{data: "guard.reject." <> user_id} = q,
          %{report_channel: channel_id} = guard
        ) do
+    answer(q)
     user_id = String.to_integer(user_id)
     confirmation = guard |> Map.fetch!(:pending) |> Map.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
@@ -152,6 +157,9 @@ defmodule Extension.Guard do
       |> Map.update!(:blacklist, &[user_id | &1])
 
     {:break, guard}
+  rescue
+    _ ->
+      {:break, guard}
   end
 
   defp handle_guard_command(_, _) do
