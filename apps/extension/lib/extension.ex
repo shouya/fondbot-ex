@@ -33,7 +33,7 @@ defmodule Extension do
 
   defp impl_callback(preset, {func, loc, args} = call) do
     self = __MODULE__
-    new_args = [Macro.escape(__MODULE__), Macro.escape(preset)] ++ args
+    new_args = [quote(do: __MODULE__), Macro.escape(preset)] ++ args
     new_call = {func, loc, new_args}
 
     quote do
@@ -77,7 +77,6 @@ defmodule Extension do
       @behaviour unquote(self)
 
       # Callbacks for Ext
-      unquote(impl_callback(preset, quote(do: on(update, state))))
       unquote(impl_callback(preset, quote(do: on(update, state))))
       unquote(impl_callback(preset, quote(do: on_info(msg, state))))
       unquote(impl_callback(preset, quote(do: new())))
