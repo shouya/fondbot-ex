@@ -33,7 +33,7 @@ defmodule Extension do
 
   defp impl_callback(preset, {func, loc, args} = call) do
     self = __MODULE__
-    new_args = [Macro.escape(preset), Macro.escape(__MODULE__)] ++ args
+    new_args = [Macro.escape(__MODULE__), Macro.escape(preset)] ++ args
     new_call = {func, loc, new_args}
 
     quote do
