@@ -51,9 +51,8 @@ defmodule Extension.Cleanser do
       preset, {:cont, uri} -> cleanse(preset, uri)
       _preset, {:done, uri} -> {:done, uri}
     end)
-    |> elem(1)
     |> case do
-      new_uri ->
+      {_, new_uri} ->
         if uri_eq?(new_uri, uri) do
           :unchanged
         else
