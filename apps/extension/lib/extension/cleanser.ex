@@ -24,7 +24,7 @@ defmodule Extension.Cleanser do
         # delete_message(m)
 
         new_uri = generate_uri(new_uri)
-        reply(m, text, new_uri)
+        send_reply(m, text, new_uri)
         throw(:done)
 
       _ ->
@@ -105,7 +105,7 @@ defmodule Extension.Cleanser do
   defp send_reply(message, old_uri, new_uri) do
     text =
       "<i>The link you sent contains tracking pieces " <>
-        "and therefore removed.</i>\n\n" <>
+        "and thus I cleansed it for you.</i>\n\n" <>
         "Original: <s>#{escape(old_uri, :html)}</s>\n\n" <>
         "Cleansed: #{escape(new_uri, :html)}"
 
