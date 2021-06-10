@@ -1,5 +1,4 @@
 defmodule Extension.Cleanser do
-[33mThe mix.lock file was generated with a newer version of Hex. Update your client by running `mix local.hex` to avoid losing data.[0m
   use Extension
 
   import Util.Telegram
