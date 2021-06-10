@@ -132,7 +132,7 @@ defmodule Extension.Reminder.Worker do
   @doc "triggered when a inline button on specific reminder is clicked"
   @impl GenServer
   def handle_cast({:on_callback, "done"}, state) do
-    Process.cancel_timer(state.repeat_ref)
+    if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
 
     case next_reminder(state.time, state.recur_pattern) do
       :stop ->

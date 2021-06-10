@@ -1,4 +1,5 @@
 defmodule Extension.Cleanser do
+[33mThe mix.lock file was generated with a newer version of Hex. Update your client by running `mix local.hex` to avoid losing data.[0m
   use Extension
 
   import Util.Telegram
@@ -127,9 +128,14 @@ defmodule Extension.Cleanser do
   defp parse_uri(text) when not is_binary(text), do: nil
 
   defp parse_uri(text) do
-    map = :uri_string.parse(text)
-    query = map[:query] || ""
-    Map.put(map, :query, :uri_string.dissect_query(query))
+    case uri_string.parse(text) do
+      {:error, _, _} ->
+        nil
+
+      map ->
+        query = map[:query] || ""
+        Map.put(map, :query, :uri_string.dissect_query(query))
+    end
   end
 
   defp generate_uri(map) do
