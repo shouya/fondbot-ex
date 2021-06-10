@@ -127,7 +127,7 @@ defmodule Extension.Cleanser do
   defp parse_uri(text) when not is_binary(text), do: nil
 
   defp parse_uri(text) do
-    case uri_string.parse(text) do
+    case :uri_string.parse(text) do
       {:error, _, _} ->
         nil
 
