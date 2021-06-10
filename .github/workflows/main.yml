@@ -21,5 +21,4 @@ jobs:
         with:
           tags: |
             shouya/fondbot:latest
-            shouya/fondbot:${GITHUB_SHA::6}
           push: true
