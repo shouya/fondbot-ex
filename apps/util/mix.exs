@@ -25,7 +25,7 @@ defmodule Util.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:tzdata, "~> 0.5"},
+      {:tzdata, "~> 1.1.0"},
       {:timex, "~> 3.1"},
       {:sentry, "~> 7.0"}
     ]
