@@ -30,7 +30,7 @@ defmodule Manager.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:jason, "~> 1.1"},
       {:sentry, "~> 7.0"},
-      {:nadia, github: "zhyu/nadia"},
+      {:nadia, "~> 0.7.0"},
       {:confex, "~> 3.4"}
     ]
   end
