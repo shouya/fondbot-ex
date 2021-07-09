@@ -278,7 +278,9 @@ defmodule Util.Telegram do
 
   @max_retries 10
   @retriable_errors [
-    :timeout
+    :timeout,
+    :nxdomain,
+    :enetunreach
   ]
   def bot_request(func, args, retries \\ @max_retries) do
     case apply(Nadia, func, args) do
@@ -292,7 +294,7 @@ defmodule Util.Telegram do
         if retries == 0 do
           e
         else
-          :timer.sleep(200)
+          :timer.sleep(1_000)
           bot_request(func, args, retries - 1)
         end
 
