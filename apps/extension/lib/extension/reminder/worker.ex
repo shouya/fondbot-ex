@@ -147,7 +147,6 @@ defmodule Extension.Reminder.Worker do
 
       {:ok, time} ->
         time_ref = kickoff(time, :remind)
-        Extension.Reminder.Manager.worker_state_changed(state.id)
 
         if state.notify_msg,
            edit(state.notify_msg,
@@ -169,6 +168,7 @@ defmodule Extension.Reminder.Worker do
             notify_msg: nil
         }
 
+        Extension.Reminder.Manager.worker_state_changed(state.id)
         {:noreply, new_state}
     end
   end
@@ -197,7 +197,6 @@ defmodule Extension.Reminder.Worker do
   end
 
   def snooze(state, duration) do
-    Extension.Reminder.Manager.worker_state_changed(state.id)
     next_alert = Timex.shift(Util.Time.now(), seconds: duration)
 
     text = """
@@ -222,14 +221,15 @@ defmodule Extension.Reminder.Worker do
     )
 
     new_state = repeat(state, duration)
+    Extension.Reminder.Manager.worker_state_changed(state.id)
     {:noreply, new_state}
   end
 
   def repeat(state, sec) do
-    Extension.Reminder.Manager.worker_state_changed(state.id)
     if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
     repeat_time = Timex.shift(DateTime.utc_now(), seconds: sec)
     ref = kickoff(repeat_time, :remind)
+    Extension.Reminder.Manager.worker_state_changed(state.id)
     %{state | repeat_time: repeat_time, repeat_ref: ref}
   end
 
