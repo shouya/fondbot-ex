@@ -5,8 +5,6 @@ defmodule Manager.Application do
 
   use Application
 
-  import Supervisor.Spec
-
   alias Manager.{ExtStack, ExtSupervisor, Updater}
 
   require Logger
@@ -27,8 +25,8 @@ defmodule Manager.Application do
 
     children =
       [
-        supervisor(ExtSupervisor, [exts]),
-        worker(ExtStack, [exts])
+        {ExtSupervisor, [exts]},
+        {ExtStack, [exts]}
       ] ++ updater_children
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
