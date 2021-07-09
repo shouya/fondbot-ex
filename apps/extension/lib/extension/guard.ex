@@ -7,6 +7,8 @@ defmodule Extension.Guard do
 
   defstruct [:safe_users, :report_channel, :pending, :blacklist]
 
+  @max_pending 10
+
   @impl true
   def new() do
     case Application.fetch_env(:extension, :guard) do
@@ -27,7 +29,7 @@ defmodule Extension.Guard do
         %__MODULE__{
           safe_users: safe_users,
           report_channel: report_channel,
-          pending: %{},
+          pending: [],
           blacklist: []
         }
 
@@ -71,7 +73,8 @@ defmodule Extension.Guard do
           new_pending =
             guard
             |> Map.get(:pending)
-            |> Map.put(user_id, confirmation)
+            |> Enum.take(@max_pending)
+            |> Keyword.put(user_id, confirmation)
 
           send_warning(chat_id)
           {:break, %{guard | pending: new_pending}}
@@ -120,7 +123,7 @@ defmodule Extension.Guard do
        ) do
     answer(q)
     user_id = String.to_integer(user_id)
-    confirmation = guard |> Map.fetch!(:pending) |> Map.get(user_id)
+    confirmation = guard |> Map.fetch!(:pending) |> Keyword.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
@@ -129,7 +132,7 @@ defmodule Extension.Guard do
 
     guard =
       guard
-      |> Map.update!(:pending, &Map.delete(&1, user_id))
+      |> Map.update!(:pending, &Keyword.delete(&1, user_id))
       |> Map.update!(:safe_users, &[user_id | &1])
 
     {:break, guard}
@@ -153,7 +156,7 @@ defmodule Extension.Guard do
 
     guard =
       guard
-      |> Map.update!(:pending, &Map.delete(&1, user_id))
+      |> Map.update!(:pending, &Keyword.delete(&1, user_id))
       |> Map.update!(:blacklist, &[user_id | &1])
 
     {:break, guard}
