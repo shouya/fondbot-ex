@@ -164,6 +164,13 @@ defmodule Util.Telegram do
     edit(msg, func, args, opts)
   end
 
+  defp edit(nil, func, args, opts) do
+    Logger.warn(
+      "Attempt to edit an blank message",
+      extra: %{func: func, args: args, opts: opts}
+    )
+  end
+
   defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
     bot_request(func, [chat_id, id, nil | args] ++ [Enum.to_list(opts)])
   end
