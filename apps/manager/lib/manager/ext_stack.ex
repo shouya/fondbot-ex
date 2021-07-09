@@ -31,11 +31,18 @@ defmodule Manager.ExtStack do
     {:noreply, [ext_mod | exts]}
   end
 
+  @impl true
+  # discard timeout messages
+  def handle_info({ref, _content}, state) when is_reference(ref) do
+    {:noreply, state}
+  end
+
   @spec traverse_exts(maybe_improper_list(), any()) :: :ok
   defp traverse_exts([], _), do: :ok
 
   defp traverse_exts([ext | exts], payload) do
     payload = Util.Telegram.remove_command_suffix(payload)
+
     case Extension.process_update(ext, payload) do
       :ok -> traverse_exts(exts, payload)
       :break -> :ok
