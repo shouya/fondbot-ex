@@ -25,8 +25,8 @@ defmodule Manager.Application do
 
     children =
       [
-        {ExtSupervisor, [exts]},
-        {ExtStack, [exts]}
+        {ExtSupervisor, exts},
+        {ExtStack, exts}
       ] ++ updater_children
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
