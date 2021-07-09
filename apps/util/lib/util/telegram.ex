@@ -165,7 +165,7 @@ defmodule Util.Telegram do
   end
 
   defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
-    bot_request(func, [chat_id, id, nil | args] ++ [Enum.into(opts, [])])
+    bot_request(func, [chat_id, id, nil | args] ++ [Enum.to_list(opts)])
   end
 
   # Like edit, but promote to the latest one, return the new message
