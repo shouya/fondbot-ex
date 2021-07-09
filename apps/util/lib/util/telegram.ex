@@ -166,7 +166,7 @@ defmodule Util.Telegram do
 
   defp edit(nil, func, args, opts) do
     Logger.warn(
-      "Attempt to edit an blank message",
+      "Attempt to edit nil as a message",
       extra: %{func: func, args: args, opts: opts}
     )
   end
@@ -190,6 +190,13 @@ defmodule Util.Telegram do
 
   def delete_message(%Message{chat: %{id: chat_id}, message_id: id}) do
     Nadia.API.request("deleteMessage", chat_id: chat_id, message_id: id)
+  end
+
+  def delete_message(nil) do
+    Logger.warn(
+      "Attempt to delete nil as a message",
+      extra: %{func: func, args: args, opts: opts}
+    )
   end
 
   def chat_action(chat_id, action) do
