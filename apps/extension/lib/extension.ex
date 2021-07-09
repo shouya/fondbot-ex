@@ -112,7 +112,7 @@ defmodule Extension do
 
   @spec process_update(atom(), update()) :: :ok | :break
   def process_update(ext, payload) do
-    GenServer.call(ext, {:process_update, payload})
+    GenServer.call(ext, {:process_update, payload}, 10_000)
   end
 
   def handle_process_update(ext, payload, from, state) do

@@ -85,22 +85,21 @@ defmodule Extension.Reminder.Worker do
       {:callback, icon, "reminder.worker.#{state.id}.#{action}"}
     end
 
-    {:ok, msg} =
-      Util.Telegram.reply(state.setup_msg, text,
-        parse_mode: "Markdown",
-        reply_markup:
-          keyboard(:inline, [
-            [
-              callback.("✅", "done"),
-              callback.("❌", "close")
-            ],
-            [
-              callback.("💤5 min", "snooze-5"),
-              callback.("💤30 min", "snooze-30"),
-              callback.("💤1 hr", "snooze-60")
-            ]
-          ])
-      )
+    Util.Telegram.reply(state.setup_msg, text,
+      parse_mode: "Markdown",
+      reply_markup:
+        keyboard(:inline, [
+          [
+            callback.("✅", "done"),
+            callback.("❌", "close")
+          ],
+          [
+            callback.("💤5 min", "snooze-5"),
+            callback.("💤30 min", "snooze-30"),
+            callback.("💤1 hr", "snooze-60")
+          ]
+        ])
+    )
 
     if state.notify_msg, do: delete_message(state.notify_msg)
 
