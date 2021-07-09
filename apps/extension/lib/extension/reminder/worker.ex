@@ -107,7 +107,7 @@ defmodule Extension.Reminder.Worker do
       state
       |> repeat(@default_repeat_duration)
       |> Map.merge(%{
-        notify_msg: msg,
+        notify_msg: state.notify_msg,
         repeat_count: state.repeat_count + 1
       })
 
@@ -147,15 +147,16 @@ defmodule Extension.Reminder.Worker do
       {:ok, time} ->
         time_ref = kickoff(time, :remind)
 
-        if state.notify_msg,
-           edit(state.notify_msg,
-             text: """
-             Reminder finished. (on #{ordinal(state.repeat_count)} alert)
+        if state.notify_msg do
+          edit(state.notify_msg,
+            text: """
+            Reminder finished. (on #{ordinal(state.repeat_count)} alert)
 
-             Next reminder at #{Util.Time.format_exact_and_humanize(time)}
-             """,
-             reply_to_message_id: state.setup_msg.message_id
-           )
+            Next reminder at #{Util.Time.format_exact_and_humanize(time)}
+            """,
+            reply_to_message_id: state.setup_msg.message_id
+          )
+        end
 
         new_state = %{
           state

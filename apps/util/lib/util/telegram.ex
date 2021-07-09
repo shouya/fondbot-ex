@@ -193,10 +193,7 @@ defmodule Util.Telegram do
   end
 
   def delete_message(nil) do
-    Logger.warn(
-      "Attempt to delete nil as a message",
-      extra: %{func: func, args: args, opts: opts}
-    )
+    Logger.warn("Attempt to delete nil as a message")
   end
 
   def chat_action(chat_id, action) do

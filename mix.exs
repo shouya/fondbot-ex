@@ -18,7 +18,8 @@ defmodule Fondbot.MixProject do
   # Run "mix help deps" for examples and options.
   defp deps do
     [
-      {:confex, "~> 3.4"}
+      {:confex, "~> 3.4"},
+      {:jason, "~> 1.2"}
     ]
   end
 
