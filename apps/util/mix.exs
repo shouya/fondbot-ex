@@ -27,7 +27,8 @@ defmodule Util.MixProject do
     [
       {:tzdata, "~> 1.1.0"},
       {:timex, "~> 3.1"},
-      {:sentry, "~> 7.0"}
+      {:sentry, "~> 7.0"},
+      {:nadia, "~> 0.7.0"}
     ]
   end
 end

@@ -2,6 +2,7 @@ defmodule Extension.Guard do
   use Extension
 
   alias Nadia.Model.{CallbackQuery, InlineQuery, User}
+  alias Util.AssocList
 
   import Util.Telegram
 
@@ -74,7 +75,7 @@ defmodule Extension.Guard do
             guard
             |> Map.get(:pending)
             |> Enum.take(@max_pending)
-            |> Keyword.put(user_id, confirmation)
+            |> AssocList.put(user_id, confirmation)
 
           send_warning(chat_id)
           {:break, %{guard | pending: new_pending}}
@@ -123,7 +124,7 @@ defmodule Extension.Guard do
        ) do
     answer(q)
     user_id = String.to_integer(user_id)
-    confirmation = guard |> Map.fetch!(:pending) |> Keyword.get(user_id)
+    confirmation = guard |> Map.fetch!(:pending) |> AssocList.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
@@ -132,7 +133,7 @@ defmodule Extension.Guard do
 
     guard =
       guard
-      |> Map.update!(:pending, &Keyword.delete(&1, user_id))
+      |> Map.update!(:pending, &AssocList.delete(&1, user_id))
       |> Map.update!(:safe_users, &[user_id | &1])
 
     {:break, guard}
@@ -147,7 +148,7 @@ defmodule Extension.Guard do
        ) do
     answer(q)
     user_id = String.to_integer(user_id)
-    confirmation = guard |> Map.fetch!(:pending) |> Map.get(user_id)
+    confirmation = guard |> Map.fetch!(:pending) |> AssocList.get(user_id)
     user_name = confirmation |> Keyword.fetch!(:user) |> Util.Telegram.user_name()
     {:ok, chat_id} = confirmation |> Keyword.fetch!(:from_chat)
 
@@ -156,7 +157,7 @@ defmodule Extension.Guard do
 
     guard =
       guard
-      |> Map.update!(:pending, &Keyword.delete(&1, user_id))
+      |> Map.update!(:pending, &AssocList.delete(&1, user_id))
       |> Map.update!(:blacklist, &[user_id | &1])
 
     {:break, guard}
