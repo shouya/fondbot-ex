@@ -105,11 +105,11 @@ defmodule Util.Telegram do
   def answer(query, opts \\ [], opts2 \\ [])
 
   def answer(%CallbackQuery{id: id}, opts, _) do
-    Task.start(fn -> bot_request(:answer_callback_query, [id, opts]) end)
+    fn -> bot_request(:answer_callback_query, [id, opts]) end
   end
 
   def answer(%InlineQuery{id: id}, results, opts) do
-    Task.start(fn -> bot_request(:answer_inline_query, [id, results, opts]) end)
+    fn -> bot_request(:answer_inline_query, [id, results, opts]) end
   end
 
   def reply(%Message{message_id: id} = msg, request, opts \\ []) do
@@ -141,11 +141,15 @@ defmodule Util.Telegram do
   end
 
   defp say(chat_id, func, args, opts) do
-    Task.start(fn -> bot_request(func, [chat_id | args] ++ [opts]) end)
+    optional_sync(opts, fn ->
+      bot_request(func, [chat_id | args] ++ [opts])
+    end)
   end
 
   def forward(%Message{chat: %{id: chat_id}, message_id: id}, to_chat_id) do
-    Task.start(fn -> bot_request(:forward_message, [to_chat_id, chat_id, id]) end)
+    optional_sync(opts, fn ->
+      bot_request(:forward_message, [to_chat_id, chat_id, id])
+    end)
   end
 
   def edit(msg, reply_markup: reply_markup) do
@@ -172,7 +176,7 @@ defmodule Util.Telegram do
   end
 
   defp edit(%Message{chat: %{id: chat_id}, message_id: id}, func, args, opts) do
-    Task.start(fn ->
+    optional_sync(opts, fn ->
       bot_request(func, [chat_id, id, nil | args] ++ [Enum.to_list(opts)])
     end)
   end
@@ -191,7 +195,7 @@ defmodule Util.Telegram do
   end
 
   def delete_message(%Message{chat: %{id: chat_id}, message_id: id}) do
-    Task.start(fn -> Nadia.API.request("deleteMessage", chat_id: chat_id, message_id: id) end)
+    optional_sync([], fn -> bot_request(:delete_message, [chat_id, id]) end)
   end
 
   def delete_message(nil) do
@@ -199,7 +203,10 @@ defmodule Util.Telegram do
   end
 
   def chat_action(chat_id, action) do
-    Task.start(fn -> bot_request(:send_chat_action, [chat_id, action]) end)
+    optional_sync(
+      [sync: false],
+      fn -> bot_request(:send_chat_action, [chat_id, action]) end
+    )
   end
 
   @doc """
@@ -237,7 +244,7 @@ defmodule Util.Telegram do
 
   def reproduce(%Message{text: text} = msg, opts) when not is_nil(text) do
     chat_id = opts[:chat_id] || msg.chat.id
-    Task.start(fn -> bot_request(:send_message, [chat_id, text]) end)
+    optional_sync(opts, fn -> bot_request(:send_message, [chat_id, text]) end)
   end
 
   def escape(text, :html) do
@@ -321,4 +328,13 @@ defmodule Util.Telegram do
   defguard is_cmd(msg, text)
            when is_single_cmd(msg, text) or
                   is_cmd_with_arg(msg, text)
+
+  defp optional_sync(opts, fun) do
+    if Keyword.get(opts, :sync) do
+      fun.()
+    else
+      Task.start(fn -> fun.() end)
+      :ok
+    end
+  end
 end

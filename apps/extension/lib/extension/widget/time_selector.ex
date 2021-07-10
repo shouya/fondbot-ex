@@ -385,7 +385,12 @@ defmodule Extension.Widget.TimeSelector do
     Adjust time using the button below.
     """
 
-    edit(msg, text: text, reply_markup: keyboard(:inline, @keyboard_set[:reminder]))
+    edit(
+      msg,
+      text: text,
+      reply_markup: keyboard(:inline, @keyboard_set[:reminder]),
+      sync: true
+    )
   end
 
   defp prompt({:reset, msg}, curr_time, header) do
@@ -394,7 +399,12 @@ defmodule Extension.Widget.TimeSelector do
     Adjust time using the button below.
     """
 
-    reset(msg, text, reply_markup: keyboard(:inline, @keyboard_set[:reminder]))
+    reset(
+      msg,
+      text,
+      reply_markup: keyboard(:inline, @keyboard_set[:reminder]),
+      sync: true
+    )
   end
 
   defp advance_and_prompt(%{msg: msg, time: time} = s, sec) do
