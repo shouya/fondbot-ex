@@ -20,6 +20,7 @@ jobs:
           path: /tmp/.buildx_cache
           key: docker-buildx-fondbot-${{ github.ref }}
           restore-keys: |
+            docker-buildx-fondbot-${{ github.ref }}
             docker-buildx-fondbot
 
       - name: Set up Docker Buildx
@@ -29,11 +30,13 @@ jobs:
       - name: Build and push Docker images
         uses: docker/build-push-action@v2.5.0
         with:
+          context: .
           tags: |
             shouya/fondbot:latest
           push: true
           cache-from: type=local,src=/tmp/.buildx_cache
           cache-to: type=local,dest=/tmp/.buildx_cache_new
+
       # See https://github.com/docker/build-push-action/blob/master/docs/advanced/cache.md#github-cache
       - name: Move Buildx cache
         run: |
