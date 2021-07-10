@@ -11,10 +11,11 @@ ENV MIX_ENV=prod
 RUN mix local.hex --force && mix local.rebar --force
 
 COPY mix.exs mix.lock ./
-COPY apps/ ./apps
 COPY config/ ./config
-
 RUN mix deps.get
+RUN mix deps.compile
+
+COPY apps/ ./apps
 RUN mix compile
 RUN mix release
 
@@ -30,5 +31,3 @@ VOLUME /data
 WORKDIR /app
 COPY --from=build /src/_build/prod/rel/fondbot ./
 CMD ./bin/fondbot start
-
-
