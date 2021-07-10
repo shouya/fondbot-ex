@@ -4,9 +4,6 @@ RUN apk --no-cache add ca-certificates curl git
 RUN mkdir /src
 WORKDIR /src
 
-VOLUME ./deps
-VOLUME ./_build
-
 ENV MIX_ENV=prod
 RUN mix local.hex --force && mix local.rebar --force
 
