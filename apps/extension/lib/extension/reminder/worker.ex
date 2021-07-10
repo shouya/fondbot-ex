@@ -118,12 +118,6 @@ defmodule Extension.Reminder.Worker do
     GenServer.cast(worker, :save_worker_state)
   end
 
-  @impl GenServer
-  def handle_cast(:save_worker_state, _from, %{id: id} = state) do
-    Extension.Reminder.Controller.save_worker_state(id, state)
-    {:reply, :ok, state}
-  end
-
   def on_callback(worker, message) do
     GenServer.cast(worker, {:on_callback, message})
   end
@@ -194,6 +188,11 @@ defmodule Extension.Reminder.Worker do
 
   def handle_cast({:on_callback, "snooze-60"}, state) do
     snooze(state, 60 * 60)
+  end
+
+  def handle_cast(:save_worker_state, %{id: id} = state) do
+    Extension.Reminder.Controller.save_worker_state(id, state)
+    {:reply, :ok, state}
   end
 
   def snooze(state, duration) do
