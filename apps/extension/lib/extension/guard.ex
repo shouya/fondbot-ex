@@ -88,7 +88,7 @@ defmodule Extension.Guard do
   defp report_incidence(payload, %{id: user_id} = user, %{report_channel: channel_id}) do
     user_name = Util.Telegram.user_name(user)
 
-    Task.async(fn -> forward(payload, channel_id) end)
+    forward(payload, channel_id)
 
     message =
       "An unauthorized user (#{user_name}) is sending message to fondbot!\n" <>
@@ -102,13 +102,11 @@ defmodule Extension.Guard do
       ]
     ]
 
-    Task.async(fn ->
-      say(
-        channel_id,
-        message,
-        reply_markup: Util.Telegram.keyboard(:inline, keyboard)
-      )
-    end)
+    say(
+      channel_id,
+      message,
+      reply_markup: Util.Telegram.keyboard(:inline, keyboard)
+    )
 
     [
       user: user,
@@ -119,9 +117,7 @@ defmodule Extension.Guard do
   end
 
   defp send_warning(chat_id) do
-    Task.async(fn ->
-      say(chat_id, "Unauthorized access!\nThis incidence will be reported.")
-    end)
+    say(chat_id, "Unauthorized access!\nThis incidence will be reported.")
   end
 
   defp authorized?(user_id, chat_id, %{safe_users: user_ids, report_channel: channel_id}) do
