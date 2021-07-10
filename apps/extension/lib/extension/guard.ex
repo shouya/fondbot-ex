@@ -17,7 +17,8 @@ defmodule Extension.Guard do
         report_channel = Keyword.fetch!(conf, :report_channel)
 
         safe_users =
-          [report_channel | Keyword.get(conf, :safe_users, [])]
+          [report_channel]
+          |> Enum.concat(Keyword.get(conf, :safe_users, []))
           |> Enum.map(fn
             str when is_binary(str) ->
               {val, _} = Integer.parse(str)
@@ -78,6 +79,7 @@ defmodule Extension.Guard do
             |> AssocList.put(user_id, confirmation)
 
           send_warning(chat_id)
+
           {:break, %{guard | pending: new_pending}}
         end
     end
@@ -86,7 +88,7 @@ defmodule Extension.Guard do
   defp report_incidence(payload, %{id: user_id} = user, %{report_channel: channel_id}) do
     user_name = Util.Telegram.user_name(user)
 
-    forward(payload, channel_id)
+    Task.async(fn -> forward(payload, channel_id) end)
 
     message =
       "An unauthorized user (#{user_name}) is sending message to fondbot!\n" <>
@@ -100,7 +102,13 @@ defmodule Extension.Guard do
       ]
     ]
 
-    say(channel_id, message, reply_markup: Util.Telegram.keyboard(:inline, keyboard))
+    Task.async(fn ->
+      say(
+        channel_id,
+        message,
+        reply_markup: Util.Telegram.keyboard(:inline, keyboard)
+      )
+    end)
 
     [
       user: user,
@@ -111,7 +119,9 @@ defmodule Extension.Guard do
   end
 
   defp send_warning(chat_id) do
-    say(chat_id, "Unauthorized access!\nThis incidence will be reported.")
+    Task.async(fn ->
+      say(chat_id, "Unauthorized access!\nThis incidence will be reported.")
+    end)
   end
 
   defp authorized?(user_id, chat_id, %{safe_users: user_ids, report_channel: channel_id}) do
