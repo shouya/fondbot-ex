@@ -192,7 +192,7 @@ defmodule Extension.Reminder.Worker do
 
   def handle_cast(:save_worker_state, %{id: id} = state) do
     Extension.Reminder.Controller.save_worker_state(id, state)
-    {:reply, :ok, state}
+    {:noreply, state}
   end
 
   def snooze(state, duration) do
