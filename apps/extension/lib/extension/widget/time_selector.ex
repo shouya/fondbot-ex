@@ -316,8 +316,6 @@ defmodule Extension.Widget.TimeSelector do
   end
 
   defp text_to_time(text, _curr_time, :custom) do
-    IO.inspect({text, NaturalTimeParser.parse(text)})
-
     case NaturalTimeParser.parse(text) do
       nil -> :invalid
       t -> t
