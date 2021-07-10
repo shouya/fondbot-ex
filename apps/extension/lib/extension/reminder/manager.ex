@@ -140,8 +140,9 @@ defmodule Extension.Reminder.Manager do
   end
 
   def on_info({:worker_state_changed, :all}, s) do
-    Controller.all_workers()
-    |> Enum.each(fn {pid, _} -> Worker.save_worker_state(pid) end)
+    for {pid, _} <- Controller.all_workers() do
+      Worker.save_worker_state(pid)
+    end
 
     send(__MODULE__, :save)
     {:noreply, s}

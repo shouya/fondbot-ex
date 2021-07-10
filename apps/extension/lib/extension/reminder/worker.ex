@@ -115,11 +115,11 @@ defmodule Extension.Reminder.Worker do
   end
 
   def save_worker_state(worker) do
-    GenServer.call(worker, :save_worker_state)
+    GenServer.cast(worker, :save_worker_state)
   end
 
   @impl GenServer
-  def handle_call(:save_worker_state, _from, %{id: id} = state) do
+  def handle_cast(:save_worker_state, _from, %{id: id} = state) do
     Extension.Reminder.Controller.save_worker_state(id, state)
     {:reply, :ok, state}
   end
