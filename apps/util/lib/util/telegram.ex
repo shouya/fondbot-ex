@@ -147,7 +147,7 @@ defmodule Util.Telegram do
   end
 
   def forward(%Message{chat: %{id: chat_id}, message_id: id}, to_chat_id) do
-    optional_sync(opts, fn ->
+    async(fn ->
       bot_request(:forward_message, [to_chat_id, chat_id, id])
     end)
   end
@@ -195,7 +195,7 @@ defmodule Util.Telegram do
   end
 
   def delete_message(%Message{chat: %{id: chat_id}, message_id: id}) do
-    optional_sync([], fn -> bot_request(:delete_message, [chat_id, id]) end)
+    async(fn -> bot_request(:delete_message, [chat_id, id]) end)
   end
 
   def delete_message(nil) do
@@ -203,10 +203,7 @@ defmodule Util.Telegram do
   end
 
   def chat_action(chat_id, action) do
-    optional_sync(
-      [sync: false],
-      fn -> bot_request(:send_chat_action, [chat_id, action]) end
-    )
+    async(fn -> bot_request(:send_chat_action, [chat_id, action]) end)
   end
 
   @doc """
@@ -336,5 +333,10 @@ defmodule Util.Telegram do
       Task.start(fn -> fun.() end)
       :ok
     end
+  end
+
+  defp async(fun) do
+    Task.start(fun)
+    :ok
   end
 end
