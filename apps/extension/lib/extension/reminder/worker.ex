@@ -71,8 +71,6 @@ defmodule Extension.Reminder.Worker do
 
   @impl GenServer
   def handle_info(:remind, state) do
-    Extension.Reminder.Manager.worker_state_changed(state.id)
-
     text = """
     #{message_digest(state.setup_msg)}
     (#{ordinal(state.repeat_count + 1)} alert)
@@ -85,31 +83,36 @@ defmodule Extension.Reminder.Worker do
       {:callback, icon, "reminder.worker.#{state.id}.#{action}"}
     end
 
-    Util.Telegram.reply(state.setup_msg, text,
-      parse_mode: "Markdown",
-      reply_markup:
-        keyboard(:inline, [
-          [
-            callback.("✅", "done"),
-            callback.("❌", "close")
-          ],
-          [
-            callback.("💤5 min", "snooze-5"),
-            callback.("💤30 min", "snooze-30"),
-            callback.("💤1 hr", "snooze-60")
-          ]
-        ])
-    )
+    {:ok, notify_msg} =
+      reply(state.setup_msg, text,
+        parse_mode: "Markdown",
+        reply_markup:
+          keyboard(:inline, [
+            [
+              callback.("✅", "done"),
+              callback.("❌", "close")
+            ],
+            [
+              callback.("💤5 min", "snooze-5"),
+              callback.("💤30 min", "snooze-30"),
+              callback.("💤1 hr", "snooze-60")
+            ]
+          ]),
+        sync: true
+      )
 
+    # replace with new message
     if state.notify_msg, do: delete_message(state.notify_msg)
 
     new_state =
       state
       |> repeat(@default_repeat_duration)
       |> Map.merge(%{
-        notify_msg: state.notify_msg,
+        notify_msg: notify_msg,
         repeat_count: state.repeat_count + 1
       })
+
+    Extension.Reminder.Manager.worker_state_changed(state.id)
 
     {:noreply, new_state}
   end
@@ -141,16 +144,14 @@ defmodule Extension.Reminder.Worker do
       {:ok, time} ->
         time_ref = kickoff(time, :remind)
 
-        if state.notify_msg do
-          edit(state.notify_msg,
-            text: """
-            Reminder finished. (on #{ordinal(state.repeat_count)} alert)
+        edit(state.notify_msg,
+          text: """
+          Reminder finished. (on #{ordinal(state.repeat_count)} alert)
 
-            Next reminder at #{Util.Time.format_exact_and_humanize(time)}
-            """,
-            reply_to_message_id: state.setup_msg.message_id
-          )
-        end
+          Next reminder at #{Util.Time.format_exact_and_humanize(time)}
+          """,
+          reply_to_message_id: state.setup_msg.message_id
+        )
 
         new_state = %{
           state
