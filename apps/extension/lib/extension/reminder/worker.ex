@@ -70,6 +70,10 @@ defmodule Extension.Reminder.Worker do
     if Process.read_timer(ref), do: ref, else: nil
   end
 
+  def get_state(worker) do
+    GenServer.call(worker, :get_state)
+  end
+
   @impl GenServer
   def handle_info(:remind, state) do
     text = """
@@ -116,10 +120,6 @@ defmodule Extension.Reminder.Worker do
     Extension.Reminder.Manager.worker_state_changed(state.id)
 
     {:noreply, new_state}
-  end
-
-  def save_worker_state(worker) do
-    GenServer.cast(worker, :save_worker_state)
   end
 
   def on_callback(worker, message) do
@@ -192,9 +192,9 @@ defmodule Extension.Reminder.Worker do
     snooze(state, 60 * 60)
   end
 
-  def handle_cast(:save_worker_state, %{id: id} = state) do
-    Extension.Reminder.Controller.save_worker_state(id, state)
-    {:noreply, state}
+  @impl true
+  def handle_call(:get_state, _ref, state) do
+    {:reply, state, state}
   end
 
   def snooze(state, duration) do

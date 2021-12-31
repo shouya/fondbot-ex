@@ -3,6 +3,8 @@ defmodule Extension.Reminder.Controller do
 
   alias Extension.Reminder.{Worker, WorkerSupervisor}
 
+  @type id_t :: binary()
+
   @reg_name :reminders
 
   def start_worker(id, param) do
@@ -12,6 +14,7 @@ defmodule Extension.Reminder.Controller do
       restart: :transient,
       type: :worker
     }
+
     DynamicSupervisor.start_child(WorkerSupervisor, spec)
   end
 
@@ -20,19 +23,16 @@ defmodule Extension.Reminder.Controller do
       nil ->
         {:error, {:worker_not_exist, id}}
 
-      {pid, _conf} ->
+      pid ->
         DynamicSupervisor.terminate_child(WorkerSupervisor, pid)
     end
   end
 
-  def save_worker_state(id, state) do
-    Registry.update_value(@reg_name, id, fn _ -> state end)
-  end
-
+  @spec lookup_worker(id_t()) :: nil | pid()
   def lookup_worker(id) do
     case Registry.lookup(@reg_name, id) do
       [] -> nil
-      [{pid, conf}] -> {pid, conf}
+      [{pid, _}] -> pid
     end
   end
 
@@ -42,6 +42,6 @@ defmodule Extension.Reminder.Controller do
 
     table
     |> :ets.tab2list()
-    |> Enum.map(fn {_id, {pid, conf}} -> {pid, conf} end)
+    |> Enum.map(fn {_id, {pid, _}} -> {pid, Worker.get_state(pid)} end)
   end
 end

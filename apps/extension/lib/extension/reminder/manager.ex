@@ -11,16 +11,15 @@ defmodule Extension.Reminder.Manager do
   end
 
   def from_saved(workers) do
-    Enum.each(workers, fn %{id: id} = conf ->
-      case Controller.start_worker(id, conf) do
-        {:ok, pid} -> Worker.save_worker_state(pid)
-        _ -> :ok
-      end
-    end)
+    for %{id: id} = conf <- workers do
+      Controller.start_worker(id, conf)
+    end
 
-    send(self(), :save)
+    save()
     nil
   end
+
+  def save(), do: save(nil)
 
   def save(_) do
     config = get_workers_config()
@@ -36,10 +35,7 @@ defmodule Extension.Reminder.Manager do
     id = Nanoid.generate()
     params = Map.put(params, :id, id)
     {:ok, pid} = Controller.start_worker(id, params)
-    # wait for the worker to initialize
-    Process.sleep(100)
-    Worker.save_worker_state(pid)
-    send(__MODULE__, :save)
+    save()
   end
 
   def on(%CallbackQuery{data: "reminder.manager.cancel"} = q, _) do
@@ -71,7 +67,8 @@ defmodule Extension.Reminder.Manager do
     answer(q)
 
     case Controller.lookup_worker(id) do
-      {_pid, conf} ->
+      pid when is_pid(pid) ->
+        conf = Worker.get_state(pid)
         conf = Map.drop(conf, [:notify_msg, :setup_msg])
 
         keyboard =
@@ -101,7 +98,7 @@ defmodule Extension.Reminder.Manager do
     answer(q)
 
     with [id, command] <- String.split(id_and_cmd, "."),
-         {pid, _} <- Controller.lookup_worker(id) do
+         pid when is_pid(pid) <- Controller.lookup_worker(id) do
       Worker.on_callback(pid, command)
       :ok
     else
@@ -136,24 +133,13 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
-  def on_info(:save, s) do
-    save(nil)
-    {:noreply, s}
-  end
-
   def on_info({:worker_state_changed, :all}, s) do
-    for {pid, _} <- Controller.all_workers() do
-      Worker.save_worker_state(pid)
-    end
-
-    send(__MODULE__, :save)
+    save()
     {:noreply, s}
   end
 
   def on_info({:worker_state_changed, id}, s) do
-    {pid, _} = Controller.lookup_worker(id)
-    Worker.save_worker_state(pid)
-    send(__MODULE__, :save)
+    save()
     {:noreply, s}
   end
 
