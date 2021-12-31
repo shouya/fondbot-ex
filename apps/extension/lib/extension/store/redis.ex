@@ -43,7 +43,6 @@ defmodule Extension.Store.Redis do
         {:ok, deserialized}
 
       {:error, err} ->
-        IO.inspect(err)
         {:error, err}
     end
   end

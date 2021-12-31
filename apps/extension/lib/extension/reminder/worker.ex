@@ -65,6 +65,7 @@ defmodule Extension.Reminder.Worker do
 
   def kickoff(time, message) do
     delay = Timex.diff(time, Util.Time.now(), :milliseconds)
+    delay = max(delay, 0)
     ref = Process.send_after(self(), message, delay)
     if Process.read_timer(ref), do: ref, else: nil
   end

@@ -36,6 +36,8 @@ defmodule Extension.Reminder.Manager do
     id = Nanoid.generate()
     params = Map.put(params, :id, id)
     {:ok, pid} = Controller.start_worker(id, params)
+    # wait for the worker to initialize
+    Process.sleep(100)
     Worker.save_worker_state(pid)
     send(__MODULE__, :save)
   end
