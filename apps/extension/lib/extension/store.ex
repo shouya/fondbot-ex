@@ -1,62 +1,17 @@
 defmodule Extension.Store do
-  use GenServer
-  @table_name :fondbot_ext_store
+  @moduledoc """
+  The store for extension data must be a GenServer with the following callbacks.
+  """
 
-  def start_link(_opts) do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
-  end
+  @callback start_link(Keyword.t()) :: {:ok, any()}
+  @callback save_state(module(), any()) :: :ok | {:error, any()}
+  @callback load_state(module()) :: {:ok, any()} | :undef | {:error, any()}
 
-  def save_state(ext, state) do
-    GenServer.call(__MODULE__, {:save, ext, state})
-  end
+  def start_link(opts), do: apply(adapter(), :start_link, [opts])
+  def save_state(ext, state), do: apply(adapter(), :save_state, [ext, state])
+  def load_state(ext), do: apply(adapter(), :start_link, [ext])
 
-  def load_state(ext) do
-    GenServer.call(__MODULE__, {:load, ext})
-  end
-
-  @impl true
-  def init(:ok) do
-    data_file =
-      :extension
-      |> Application.get_env(:data_dir, "./data")
-      |> Path.join("ext_store.db")
-      |> String.to_charlist()
-
-    data_file
-    |> Path.dirname()
-    |> File.mkdir_p()
-
-    case :dets.open_file(@table_name, type: :set, file: data_file) do
-      {:ok, _} -> {:ok, :ok}
-      {:error, reason} -> {:stop, reason}
-    end
-  end
-
-  @impl true
-  def handle_call({:save, ext, state}, _, s) do
-    :ok = :dets.insert(@table_name, {ext, state})
-    {:reply, :ok, s}
-  end
-
-  @impl true
-  def handle_call({:load, ext}, _, s) do
-    reply =
-      case :dets.lookup(@table_name, ext) do
-        [{_, value}] ->
-          {:ok, value}
-
-        [] ->
-          :undef
-
-        {:error, reason} ->
-          {:error, reason}
-      end
-
-    {:reply, reply, s}
-  end
-
-  @impl true
-  def terminate(_, _) do
-    :dets.close(@table_name)
+  defp adapter do
+    Application.get_env(:extension, :store_module, __MODULE__.Dets)
   end
 end
