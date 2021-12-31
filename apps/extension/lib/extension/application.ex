@@ -8,8 +8,10 @@ defmodule Extension.Application do
   def start(_type, _args) do
     Confex.resolve_env!(:extension)
 
+    store_adapter = Extension.Store.adapter()
+
     children = [
-      Extension.Store,
+      store_adapter,
       Util.InlineResultCollector,
       Task.Supervisor
     ]

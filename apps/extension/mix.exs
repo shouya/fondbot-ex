@@ -32,7 +32,8 @@ defmodule Extension.MixProject do
       {:exactor, "~> 2.2.4"},
       {:nimble_parsec, "~> 0.5.0"},
       {:recon, "~> 2.5.0"},
-      {:confex, "~> 3.4"}
+      {:confex, "~> 3.4"},
+      {:redix, "~> 1.1.5"}
     ]
   end
 end

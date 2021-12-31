@@ -33,5 +33,9 @@ config :extension, :guard,
   safe_users: [],
   report_channel: {:system, "ADMIN_CHANNEL"}
 
-import_config "#{Mix.env()}.exs"
+config :extension,
+  store_module: Extension.Store.Redis,
+  redis_uri: "redis://localhost:6379"
 
+
+import_config "#{Mix.env()}.exs"

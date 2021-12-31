@@ -1,8 +1,8 @@
 defmodule Extension.Store.Dets do
-  use GenServer
-  @table_name :fondbot_ext_store
-
   @behaviour Extension.Store
+  use GenServer
+
+  @table_name :fondbot_ext_store
 
   @impl Extension.Store
   def start_link(_opts) do
