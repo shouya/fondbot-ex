@@ -7,6 +7,8 @@ defmodule Extension.Reminder.Worker do
 
   @default_repeat_duration 10 * 60
 
+  @type type_t :: :oneshot | :daily
+
   defstruct [
     :id,
     :setup_msg,
@@ -72,6 +74,10 @@ defmodule Extension.Reminder.Worker do
 
   def get_state(worker) do
     GenServer.call(worker, :get_state)
+  end
+
+  def skip_next(worker) do
+    GenServer.call(worker, :skip_next)
   end
 
   @impl GenServer
@@ -197,6 +203,42 @@ defmodule Extension.Reminder.Worker do
     {:reply, state, state}
   end
 
+  @impl true
+  def handle_call(:skip_next, _ref, state) do
+    case next_next_reminder(state.time, state.recur_pattern) do
+      nil ->
+        reply(state.setup_msg, "Error: cannot skip a one-shot reminder")
+        {:reply, {:error, "Cannot skip a one-shot reminder"}, state}
+
+      {:ok, new_time} ->
+        if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
+        if state.time_ref, do: Process.cancel_timer(state.time_ref)
+
+        time_ref = kickoff(new_time, :remind)
+
+        text = """
+        Skipped reminder at #{Util.Time.format_exact_and_humanize(state.time)}.
+
+        See you at #{Util.Time.format_exact_and_humanize(new_time)}.
+        """
+
+        reply(state.setup_msg, text)
+
+        new_state = %{
+          state
+          | time: new_time,
+            time_ref: time_ref,
+            repeat_count: 0,
+            repeat_ref: nil,
+            repeat_time: nil,
+            notify_msg: nil
+        }
+
+        Extension.Reminder.Manager.worker_state_changed(state.id)
+        {:reply, :ok, new_state}
+    end
+  end
+
   def snooze(state, duration) do
     next_alert = Timex.shift(Util.Time.now(), seconds: duration)
 
@@ -255,11 +297,23 @@ defmodule Extension.Reminder.Worker do
       )
 
     if Timex.before?(time, now) do
-      {:ok, Timex.shift(time, days: 1)}
+      {:ok, offset_time(time, :daily)}
     else
       {:ok, time}
     end
   end
+
+  @spec next_next_reminder(Timex.t(), :oneshot | :daily) :: nil | Timex.t()
+  defp next_next_reminder(_time, :oneshot), do: nil
+
+  defp next_next_reminder(time, :daily) do
+    {:ok, next_time} = next_reminder(time, :daily)
+    {:ok, offset_time(next_time, :daily)}
+  end
+
+  @spec offset_time(Timex.t(), :oneshot | :daily) :: Timex.t()
+  defp offset_time(time, :daily), do: Timex.shift(time, days: 1)
+  defp offset_time(time, :oneshot), do: time
 
   @impl true
   def terminate(reason, _state) do

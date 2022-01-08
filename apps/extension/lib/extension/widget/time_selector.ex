@@ -336,7 +336,14 @@ defmodule Extension.Widget.TimeSelector do
         Current time: #{format_time(time)}\n
         """
 
-        {:ok, new_msg} = reset(msg, header <> prompt, reply_markup: force_reply())
+        {:ok, new_msg} =
+          reset(
+            msg,
+            header <> prompt,
+            reply_markup: force_reply(),
+            sync: true
+          )
+
         new_state(%{s | msg: new_msg})
 
       new_time ->

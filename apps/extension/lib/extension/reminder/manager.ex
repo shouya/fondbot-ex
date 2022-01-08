@@ -34,7 +34,7 @@ defmodule Extension.Reminder.Manager do
   def spawn_worker(%{} = params) do
     id = Nanoid.generate()
     params = Map.put(params, :id, id)
-    {:ok, pid} = Controller.start_worker(id, params)
+    {:ok, _pid} = Controller.start_worker(id, params)
     save()
   end
 
@@ -58,6 +58,22 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
+  def on(%CallbackQuery{data: "reminder.manager.skip." <> id} = q, _) do
+    answer(q)
+
+    case Controller.lookup_worker(id) do
+      nil ->
+        edit(q.message, text: "Reminder not found.")
+
+      pid ->
+        edit(q.message, text: "Skipping next reminder.")
+        Worker.skip_next(pid)
+        edit(q.message, text: "Done.")
+    end
+
+    :ok
+  end
+
   def on(%CallbackQuery{data: "reminder.manager.ack"} = q, _) do
     edit(q.message, text: "Ok.")
     :ok
@@ -74,6 +90,7 @@ defmodule Extension.Reminder.Manager do
         keyboard =
           keyboard(:inline, [
             [
+              {:callback, "Skip", "reminder.manager.skip." <> id},
               {:callback, "Del", "reminder.manager.delete." <> id},
               {:callback, "OK", "reminder.manager.ack"}
             ]
@@ -127,7 +144,7 @@ defmodule Extension.Reminder.Manager do
 
       buttons ->
         buttons = [[{:callback, "Cancel", "reminder.manager.cancel"}]] ++ buttons
-        reply(m, "Choose reminder to delete", reply_markup: keyboard(:inline, buttons))
+        reply(m, "Choose reminder to inspect", reply_markup: keyboard(:inline, buttons))
     end
 
     :ok
@@ -138,7 +155,7 @@ defmodule Extension.Reminder.Manager do
     {:noreply, s}
   end
 
-  def on_info({:worker_state_changed, id}, s) do
+  def on_info({:worker_state_changed, _id}, s) do
     save()
     {:noreply, s}
   end
