@@ -210,6 +210,16 @@ defmodule Extension.Reminder.Worker do
         reply(state.setup_msg, "Error: cannot skip a one-shot reminder")
         {:reply, {:error, "Cannot skip a one-shot reminder"}, state}
 
+      {:ok, new_time} when new_time == state.time ->
+        text = """
+        Reminder
+        at #{Util.Time.format_exact_and_humanize(state.time)} is
+        already skipped. No change will be made.
+        """
+
+        reply(state.setup_msg, text)
+        {:reply, :ok, state}
+
       {:ok, new_time} ->
         if state.repeat_ref, do: Process.cancel_timer(state.repeat_ref)
         if state.time_ref, do: Process.cancel_timer(state.time_ref)
