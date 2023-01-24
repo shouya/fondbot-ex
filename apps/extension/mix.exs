@@ -27,13 +27,13 @@ defmodule Extension.MixProject do
   defp deps do
     [
       {:util, in_umbrella: true},
-      {:nanoid, "~> 2.0.1"},
+      {:nanoid, "~> 2.0"},
       {:poison, "~> 3.1"},
-      {:exactor, "~> 2.2.4"},
-      {:nimble_parsec, "~> 0.5.0"},
-      {:recon, "~> 2.5.0"},
+      {:exactor, "~> 2.2"},
+      {:nimble_parsec, "~> 0.5"},
+      {:recon, "~> 2.5"},
       {:confex, "~> 3.4"},
-      {:redix, "~> 1.1.5"}
+      {:redix, "~> 1.1"}
     ]
   end
 end

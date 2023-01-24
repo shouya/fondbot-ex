@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :nadia,
   token: {:system, "FONDBOT_TOKEN"}

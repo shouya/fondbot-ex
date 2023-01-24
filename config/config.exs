@@ -1,6 +1,6 @@
 # This file is responsible for configuring your application
 # and its dependencies with the aid of the Mix.Config module.
-use Mix.Config
+import Config
 
 # By default, the umbrella project as well as each child
 # application will require this configuration file, as
@@ -10,7 +10,9 @@ use Mix.Config
 # child application in their own app, but all other
 # dependencies, regardless if they belong to one or multiple
 # apps, should be configured in the umbrella to avoid confusion.
-import_config "../apps/*/config/config.exs"
+for config <- "../apps/*/config/config.exs" |> Path.expand(__DIR__) |> Path.wildcard() do
+  import_config config
+end
 
 # Sample configuration (overrides the imported configuration above):
 #
@@ -19,11 +21,9 @@ import_config "../apps/*/config/config.exs"
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 
-
 config :sentry,
   dsn: {:system, "SENTRY_DSN"},
   environment_name: Mix.env(),
   included_environments: [:prod, :dev],
   enable_source_code_context: true,
   root_source_code_path: File.cwd!()
-

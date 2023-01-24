@@ -1,7 +1,7 @@
 defmodule Manager.Updater.Poll do
   use GenServer
 
-  @config Application.get_env(:manager, :poll,
+  @config Application.compile_env(:manager, :poll,
             interval: 1,
             limit: 100,
             retries: 10

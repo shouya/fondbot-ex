@@ -5,7 +5,7 @@ defmodule Manager.ExtSupervisor do
     Supervisor.start_link(__MODULE__, exts)
   end
 
-  @extra_sup Application.get_env(:manager, :extra_supervisors, [])
+  @extra_sup Application.compile_env(:manager, :extra_supervisors, [])
 
   def init(exts) do
     children = exts |> Enum.map(fn mod -> {mod, []} end)

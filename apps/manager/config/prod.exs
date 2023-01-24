@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :manager, :updater, :webhook
 config :manager, :webhook,

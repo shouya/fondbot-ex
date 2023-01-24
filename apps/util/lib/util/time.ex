@@ -1,5 +1,5 @@
 defmodule Util.Time do
-  @time_conf Application.get_env(:util, :time, timezone: "Asia/Shanghai")
+  @time_conf Application.compile_env(:util, :time, timezone: "Asia/Shanghai")
 
   def now() do
     DateTime.utc_now() |> to_local()

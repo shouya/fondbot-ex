@@ -3,10 +3,10 @@ defmodule Extension.Archiver do
 
   alias Nadia.Model.{CallbackQuery, InlineQuery, Message, User}
 
-  def on(%Message{text: "/archive " <> url}) do
+  def on(%Message{text: "/archive " <> _url}) do
   end
 
-  defp validate_link(url) do
+  defp validate_link(_url) do
   end
 
   defp archive_link(url) do
@@ -38,7 +38,7 @@ defmodule Extension.Archiver do
   end
 
   defp archive(url) do
-    with {:ok, url} = validate_link(url) do
+    with {:ok, _url} = validate_link(url) do
     end
   end
 end

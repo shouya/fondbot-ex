@@ -6,8 +6,6 @@ defmodule Extension.Store do
   The store module is specified via extension.store_module config.
   """
 
-  @behaviour GenServer
-
   @callback start_link(Keyword.t()) :: {:ok, any()}
   @callback save_state(module(), any()) :: :ok | {:error, any()}
   @callback load_state(module()) :: {:ok, any()} | :undef | {:error, any()}

@@ -52,7 +52,7 @@ defmodule Extension.AFK do
     }
   end
 
-  @afk_conf Application.get_env(:extension, :afk, interval: 60)
+  @afk_conf Application.compile_env(:extension, :afk, interval: 60)
   defp should_notify(%{last_notify: last_notify}) do
     interval = Keyword.get(@afk_conf, :interval)
     last_notify = last_notify || DateTime.from_unix!(0)
