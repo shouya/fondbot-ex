@@ -33,7 +33,8 @@ defmodule Extension.MixProject do
       {:nimble_parsec, "~> 0.5"},
       {:recon, "~> 2.5"},
       {:confex, "~> 3.4"},
-      {:redix, "~> 1.1"}
+      {:redix, "~> 1.1"},
+      {:req, "~> 0.3"}
     ]
   end
 end

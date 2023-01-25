@@ -12,6 +12,7 @@ config :manager,
     Extension.Weather,
     Extension.Reminder.Builder,
     Extension.Reminder.Manager,
+    Extension.YoutubeAudio,
     Extension.Fetcher,
     Extension.Random,
     Extension.Cleanser
