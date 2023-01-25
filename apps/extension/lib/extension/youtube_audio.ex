@@ -58,18 +58,22 @@ defmodule Extension.YoutubeAudio do
   @spec extract_youtube_video_id(binary()) :: {:ok, binary()} | {:error, any}
   defp extract_youtube_video_id(input) do
     uri = URI.parse(input)
-    query = URI.decode_query(uri.query)
+    query = if uri.query, do: URI.decode_query(uri.query)
 
     case uri do
       %{host: "youtu.be", path: "/" <> vid} ->
         {:ok, vid}
 
       %{host: full, path: "/watch"}
-      when full in ["m.youtube.com", "www.youtube.com"] ->
+      when full in ["m.youtube.com", "www.youtube.com"] and not is_nil(query) ->
         {:ok, query["v"]}
+
+      _ ->
+        {:error, "not youtube"}
     end
   rescue
-    # it's entirely possible the input is not a url
+    # it's entirely possible the input is not a url at all and
+    # URI.parse may fail.
     _ -> {:error, "not youtube"}
   end
 
