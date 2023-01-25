@@ -1,3 +1,29 @@
+defmodule Nadia.Model.InlineQueryResult.MyAudio do
+  # redefining the module to add the caption field
+
+  defstruct type: "audio",
+            id: nil,
+            audio_url: nil,
+            title: nil,
+            performer: nil,
+            audio_duration: nil,
+            reply_markup: nil,
+            input_message_content: nil,
+            caption: nil
+
+  @type t :: %__MODULE__{
+          type: binary,
+          id: binary,
+          audio_url: binary,
+          title: binary,
+          performer: binary,
+          audio_duration: integer,
+          reply_markup: InlineKeyboardMarkup.t(),
+          input_message_content: InputMessageContent.t(),
+          caption: binary
+        }
+end
+
 defmodule Extension.YoutubeAudio do
   @moduledoc """
   Answer to inline query containing a youtube link with an audio result.
@@ -17,8 +43,9 @@ defmodule Extension.YoutubeAudio do
     input = String.trim(input)
 
     with {:ok, vid} <- extract_youtube_video_id(input),
+         {:ok, metadata} <- fetch_metadata(vid),
          {:ok, direct_url} <- fetch_direct_url(vid),
-         {:ok, result} <- to_query_result(vid, direct_url) do
+         {:ok, result} <- to_query_result(vid, metadata, direct_url) do
       InlineResultCollector.add(q.id, [result])
       :ok
     else
@@ -66,14 +93,32 @@ defmodule Extension.YoutubeAudio do
     end
   end
 
-  @spec to_query_result(binary(), binary()) ::
-          {:ok, InlineQueryResult.Audio.t()}
-  defp to_query_result(vid, audio_url) do
-    audio = %InlineQueryResult.Audio{
-      # some random unique id
+  @spec fetch_metadata(binary()) :: %{title: binary(), duration: integer()}
+  def fetch_metadata(vid) do
+    resp = Req.get("#{@invidious_instance}/api/v1/videos/#{vid}")
+
+    with {:ok, %{body: json}} <- resp do
+      metadata = %{
+        title: json["title"],
+        duration: json["lengthSeconds"]
+      }
+
+      {:ok, metadata}
+    else
+      _ -> {:error, "failed to fetch metadata"}
+    end
+  end
+
+  @spec to_query_result(binary(), map(), binary()) ::
+          {:ok, InlineQueryResult.MyAudio.t()}
+  defp to_query_result(vid, metadata, audio_url) do
+    audio = %InlineQueryResult.MyAudio{
+      # id field is required and must be unique
       id: vid,
       audio_url: audio_url,
-      title: "https://www.youtube.com/watch?v=#{vid}"
+      title: metadata.title,
+      audio_duration: metadata.duration,
+      caption: "https://www.youtube.com/watch?v=#{vid}"
     }
 
     {:ok, audio}
