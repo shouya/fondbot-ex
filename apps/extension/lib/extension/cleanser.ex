@@ -41,7 +41,8 @@ defmodule Extension.Cleanser do
     :taobao,
     :jd_ref,
     :jd,
-    :amazon
+    :amazon,
+    :jd_url
   ]
 
   @spec cleanse(uri_t()) :: {:ok, uri_t()} | :unchanged
@@ -97,6 +98,17 @@ defmodule Extension.Cleanser do
     |> case do
       uri -> {:cont, uri}
     end
+  end
+
+  defp cleanse(:jd_url, %{host: "item.m.jd.com"} = uri) do
+    query = uri[:query]
+    query = Enum.reject(query, &match?({"&utm_source", _}, &1))
+    query = Enum.reject(query, &match?({"&utm_medium", _}, &1))
+    query = Enum.reject(query, &match?({"&utm_campaign", _}, &1))
+    query = Enum.reject(query, &match?({"&utm_term", _}, &1))
+    query = Enum.reject(query, &match?({"&ad_od", _}, &1))
+    query = Enum.reject(query, &match?({"&gx", _}, &1))
+    {:cont, %{uri | query: query}}
   end
 
   defp cleanse(_, uri), do: {:cont, uri}
