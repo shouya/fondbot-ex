@@ -127,6 +127,7 @@ defmodule Extension.Cleanser do
     )
   end
 
+  @spec parse_uri(String.t()) :: uri_t | nil
   defp parse_uri(text) when not is_binary(text), do: nil
 
   defp parse_uri(text) do
@@ -140,6 +141,7 @@ defmodule Extension.Cleanser do
     end
   end
 
+  @spec generate_uri(uri_t) :: binary
   defp generate_uri(map) do
     map =
       case map[:query] do
