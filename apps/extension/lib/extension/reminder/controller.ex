@@ -38,10 +38,23 @@ defmodule Extension.Reminder.Controller do
 
   @spec all_workers() :: [{pid(), term()}]
   def all_workers() do
-    {_kind, _partition, table, _pid_ets, _} = :ets.lookup_element(@reg_name, -1, 2)
+    @reg_name
+    |> Registry.select([{{:_, :"$1", :_}, [], [:"$1"]}])
+    |> Enum.flat_map(fn pid ->
+      case worker_state(pid) do
+        {:ok, state} -> [{pid, state}]
+        :error -> []
+      end
+    end)
+  end
 
-    table
-    |> :ets.tab2list()
-    |> Enum.map(fn {_id, {pid, _}} -> {pid, Worker.get_state(pid)} end)
+  # One worker that cannot answer must not stop the others being listed or
+  # saved.
+  defp worker_state(pid) do
+    {:ok, Worker.get_state(pid)}
+  catch
+    :exit, reason ->
+      Logger.warning("Reminder worker #{inspect(pid)} gave no state: #{inspect(reason)}")
+      :error
   end
 end

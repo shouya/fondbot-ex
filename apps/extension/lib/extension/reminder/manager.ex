@@ -6,6 +6,8 @@ defmodule Extension.Reminder.Manager do
   alias Extension.Reminder.{Controller, Worker}
   alias Nadia.Model.{Message, CallbackQuery}
 
+  require Logger
+
   def new() do
     nil
   end
@@ -28,14 +30,25 @@ defmodule Extension.Reminder.Manager do
 
   @doc "callback when workers changed state to save current states"
   def worker_state_changed(id \\ :all) do
-    send(__MODULE__, {:worker_state_changed, id})
+    # Workers outlive a restart of this extension, so it may not be up.
+    case Process.whereis(__MODULE__) do
+      nil -> :ok
+      pid -> send(pid, {:worker_state_changed, id})
+    end
   end
 
   def spawn_worker(%{} = params) do
     id = Nanoid.generate()
     params = Map.put(params, :id, id)
-    {:ok, _pid} = Controller.start_worker(id, params)
-    save()
+
+    case Controller.start_worker(id, params) do
+      {:ok, _pid} ->
+        save()
+
+      other ->
+        Logger.error("Unable to start reminder worker #{id}: #{inspect(other)}")
+        other
+    end
   end
 
   def on(%CallbackQuery{data: "reminder.manager.cancel"} = q, _) do
@@ -49,6 +62,7 @@ defmodule Extension.Reminder.Manager do
 
     case Controller.terminate_worker(id) do
       :ok ->
+        save()
         edit(q.message, text: "Reminder deleted.")
 
       {:error, _} ->
@@ -150,17 +164,27 @@ defmodule Extension.Reminder.Manager do
     :ok
   end
 
-  def on_info({:worker_state_changed, :all}, s) do
-    save()
-    {:noreply, s}
-  end
+  # A worker that is stopping is still registered when it notifies, so the
+  # live set is read once it has gone.
+  @save_delay_ms 100
 
   def on_info({:worker_state_changed, _id}, s) do
+    Process.send_after(self(), :save_workers, @save_delay_ms)
+    {:noreply, s}
+  end
+
+  def on_info(:save_workers, s) do
     save()
     {:noreply, s}
   end
 
+  # Timer references are re-derived by Worker.init/1, so a saved one is a
+  # stale second copy of the same fact.
+  @transient_keys [:time_ref, :repeat_ref]
+
   def get_workers_config() do
-    Enum.map(Controller.all_workers(), fn {_pid, conf} -> conf end)
+    for {_pid, conf} <- Controller.all_workers() do
+      conf |> Map.from_struct() |> Map.drop(@transient_keys)
+    end
   end
 end

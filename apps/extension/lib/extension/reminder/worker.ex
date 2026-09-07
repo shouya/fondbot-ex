@@ -326,8 +326,14 @@ defmodule Extension.Reminder.Worker do
   defp offset_time(time, :oneshot), do: time
 
   @impl true
-  def terminate(reason, _state) do
+  def terminate(reason, state) do
     Logger.info("Reminder worker terminating (#{inspect(reason)})")
-    {:stop, reason}
+
+    # A worker that finished on its own has to leave the saved set. A
+    # shutdown of the whole tree must not rewrite that set, or a restart
+    # comes back with no reminders.
+    if reason == :normal, do: Extension.Reminder.Manager.worker_state_changed(state.id)
+
+    :ok
   end
 end
