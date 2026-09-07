@@ -4,4 +4,5 @@ config :manager, :updater, :webhook
 config :manager, :webhook,
   ip: {0, 0, 0, 0},
   port: 9786,
-  url: {:system, "WEBHOOK_URL"}
+  url: {:system, "WEBHOOK_URL"},
+  secret_token: {:system, "WEBHOOK_SECRET_TOKEN", nil}

@@ -28,6 +28,7 @@ defmodule Manager.MixProject do
     [
       {:extension, in_umbrella: true},
       {:plug_cowboy, "~> 2.0"},
+      {:plug_crypto, "~> 1.2"},
       {:jason, "~> 1.1"},
       {:sentry, "~> 7.0"},
       {:nadia, "~> 0.7.0"},

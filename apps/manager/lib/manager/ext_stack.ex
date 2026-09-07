@@ -1,6 +1,8 @@
 defmodule Manager.ExtStack do
   use GenServer
 
+  require Logger
+
   def start_link(exts) do
     GenServer.start_link(__MODULE__, exts, name: __MODULE__)
   end
@@ -43,9 +45,28 @@ defmodule Manager.ExtStack do
   defp traverse_exts([ext | exts], payload) do
     payload = Util.Telegram.remove_command_suffix(payload)
 
-    case Extension.process_update(ext, payload) do
+    case process_update(ext, payload) do
       :ok -> traverse_exts(exts, payload)
       :break -> :ok
     end
+  end
+
+  # A failing extension must not take the stack down with it: the stack is
+  # supervised at the top of :manager, so a crash loop here stops the node.
+  # Stopping the traversal keeps Extension.Guard's veto over later
+  # extensions intact.
+  @spec process_update(atom(), any()) :: :ok | :break
+  defp process_update(ext, payload) do
+    Extension.process_update(ext, payload)
+  catch
+    kind, reason ->
+      formatted = Exception.format(kind, reason, __STACKTRACE__)
+      Logger.error("#{inspect(ext)} failed on an update: #{formatted}")
+
+      Sentry.capture_message("extension failed on an update",
+        extra: %{extension: inspect(ext), error: formatted}
+      )
+
+      :break
   end
 end

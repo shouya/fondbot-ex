@@ -25,6 +25,7 @@ config :manager,
 config :manager, :webhook,
   ip: {127, 0, 0, 1},
   port: 9786,
-  url: "https://7c857279.ngrok.io"
+  url: "https://7c857279.ngrok.io",
+  secret_token: {:system, "WEBHOOK_SECRET_TOKEN", nil}
 
 import_config "#{Mix.env()}.exs"
