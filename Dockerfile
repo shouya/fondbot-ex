@@ -27,13 +27,15 @@ RUN mix release
 
 # only to ensure the base image is compatible
 FROM docker.io/library/elixir:1.14.5-otp-25-alpine
-RUN apk --no-cache add curl git bash
+RUN apk --no-cache add curl bash
 
-RUN mkdir /app /data
+RUN addgroup -S fondbot && adduser -S -G fondbot fondbot
+RUN mkdir /app /data && chown fondbot:fondbot /app /data
 
 EXPOSE 9786/tcp
 VOLUME /data
 
 WORKDIR /app
-COPY --from=build /src/_build/prod/rel/fondbot ./
+COPY --from=build --chown=fondbot:fondbot /src/_build/prod/rel/fondbot ./
+USER fondbot
 CMD ./bin/fondbot start
