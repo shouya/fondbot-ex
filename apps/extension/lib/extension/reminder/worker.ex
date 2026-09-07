@@ -82,8 +82,38 @@ defmodule Extension.Reminder.Worker do
 
   @impl GenServer
   def handle_info(:remind, state) do
+    case send_alert(state) do
+      {:ok, notify_msg} ->
+        # replace with new message
+        if state.notify_msg, do: delete_message(state.notify_msg)
+
+        new_state =
+          state
+          |> repeat(@default_repeat_duration)
+          |> Map.merge(%{
+            notify_msg: notify_msg,
+            repeat_count: state.repeat_count + 1
+          })
+
+        Extension.Reminder.Manager.worker_state_changed(state.id)
+
+        {:noreply, new_state}
+
+      other ->
+        # An alert telegram refuses must not kill the reminder, or a
+        # transient restart takes the reminder with it.
+        Logger.error("Reminder #{state.id} could not alert: #{inspect(other)}")
+        {:noreply, repeat(state, @default_repeat_duration)}
+    end
+  end
+
+  defp send_alert(state) do
+    # The reminder is the user's own text and the message is parsed as
+    # markdown, so an unescaped * or _ makes telegram reject the send.
+    digest = state.setup_msg |> message_digest() |> escape(:markdown)
+
     text = """
-    #{message_digest(state.setup_msg)}
+    #{digest}
     (#{ordinal(state.repeat_count + 1)} alert)
 
     Reminder set at #{Util.Time.format_exact_and_humanize(state.setup_time)}
@@ -94,38 +124,22 @@ defmodule Extension.Reminder.Worker do
       {:callback, icon, "reminder.worker.#{state.id}.#{action}"}
     end
 
-    {:ok, notify_msg} =
-      reply(state.setup_msg, text,
-        parse_mode: "Markdown",
-        reply_markup:
-          keyboard(:inline, [
-            [
-              callback.("✅", "done"),
-              callback.("❌", "close")
-            ],
-            [
-              callback.("💤5 min", "snooze-5"),
-              callback.("💤30 min", "snooze-30"),
-              callback.("💤1 hr", "snooze-60")
-            ]
-          ]),
-        sync: true
-      )
-
-    # replace with new message
-    if state.notify_msg, do: delete_message(state.notify_msg)
-
-    new_state =
-      state
-      |> repeat(@default_repeat_duration)
-      |> Map.merge(%{
-        notify_msg: notify_msg,
-        repeat_count: state.repeat_count + 1
-      })
-
-    Extension.Reminder.Manager.worker_state_changed(state.id)
-
-    {:noreply, new_state}
+    reply(state.setup_msg, text,
+      parse_mode: "Markdown",
+      reply_markup:
+        keyboard(:inline, [
+          [
+            callback.("✅", "done"),
+            callback.("❌", "close")
+          ],
+          [
+            callback.("💤5 min", "snooze-5"),
+            callback.("💤30 min", "snooze-30"),
+            callback.("💤1 hr", "snooze-60")
+          ]
+        ]),
+      sync: true
+    )
   end
 
   def on_callback(worker, message) do
