@@ -40,7 +40,6 @@ defmodule Extension.Cleanser do
     :utm,
     :amazon_ref,
     :taobao,
-    :jd_ref,
     :jd,
     :amazon
   ]
@@ -67,7 +66,7 @@ defmodule Extension.Cleanser do
           | {:done, uri_t()}
   defp cleanse(preset, uri)
 
-  defp cleanse(:utm_cleaner, uri) do
+  defp cleanse(:utm, uri) do
     query = uri[:query]
     query = Enum.reject(query, &match?({"utm_" <> _, _}, &1))
     {:cont, %{uri | query: query}}
