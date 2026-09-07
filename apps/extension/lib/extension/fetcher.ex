@@ -9,15 +9,9 @@ defmodule Extension.Fetcher do
   alias Util.InlineResultCollector
 
   def on(%InlineQuery{query: text} = q, _) do
-    case :uri_string.parse(text) do
-      {:error, _, _} ->
-        nil
-
-      %{host: h} when is_binary(h) ->
-        spawn(fn -> handle_url(q, text) end)
-
-      %{} ->
-        nil
+    # The address check needs DNS, so it happens off the extension process.
+    if Util.Url.http_link?(text) do
+      spawn(fn -> handle_url(q, text) end)
     end
 
     :ok
@@ -37,9 +31,9 @@ defmodule Extension.Fetcher do
   end
 
   defp determine_type(id, url) do
-    url_map = :uri_string.parse(url)
+    path = URI.parse(url).path || ""
 
-    case determine_type_by_ext(url_map.path) do
+    case determine_type_by_ext(path) do
       nil ->
         InlineResultCollector.extend(id, 3000)
         determine_type_by_mime(url)
@@ -66,30 +60,73 @@ defmodule Extension.Fetcher do
     {"Accept", "*/*"}
   ]
 
+  # Redirects are followed by hand so that every hop is checked against
+  # Util.Url; hackney's follow_redirect would only check the first one.
+  @http_opts [connect_timeout: 5_000, recv_timeout: 5_000, follow_redirect: false]
+  @redirect_limit 3
+
   @mime_type_map %{
     photo: ["image/png", "image/jpeg", "image/webp", "image/bmp"]
   }
-  defp determine_type_by_mime(url) do
-    case :hackney.request(:get, url, @req_header, "", follow_redirect: true) do
-      {:error, _} ->
-        nil
 
-      {:ok, code, headers, _} when 200 <= code and code <= 299 ->
-        case headers |> Map.new() |> Map.get("Content-Type") do
-          nil ->
-            nil
+  defp determine_type_by_mime(url, redirects_left \\ @redirect_limit)
 
-          content_type ->
-            @mime_type_map
-            |> Enum.find({nil, nil}, fn {_k, mime_types} ->
-              Enum.any?(mime_types, &(content_type == &1))
-            end)
-            |> elem(0)
-        end
+  defp determine_type_by_mime(_url, 0), do: nil
+
+  defp determine_type_by_mime(url, redirects_left) do
+    case request(url) do
+      {:ok, code, headers} when 200 <= code and code <= 299 ->
+        mime_to_type(content_type(headers))
+
+      {:ok, code, headers} when 300 <= code and code <= 399 ->
+        follow_redirect(url, headers, redirects_left)
 
       _ ->
         nil
     end
+  end
+
+  defp follow_redirect(url, headers, redirects_left) do
+    case header(headers, "location") do
+      nil ->
+        nil
+
+      location ->
+        determine_type_by_mime(URI.merge(url, location) |> to_string(), redirects_left - 1)
+    end
+  end
+
+  @spec request(binary()) :: {:ok, integer(), list()} | {:error, any()}
+  defp request(url) do
+    with {:ok, _uri} <- Util.Url.public_http(url),
+         {:ok, code, headers, ref} <- :hackney.request(:get, url, @req_header, "", @http_opts) do
+      # Nothing here reads the body, and an unread body leaks the connection.
+      :hackney.close(ref)
+      {:ok, code, headers}
+    else
+      {:error, reason} -> {:error, reason}
+      other -> {:error, other}
+    end
+  end
+
+  defp content_type(headers) do
+    case header(headers, "content-type") do
+      nil -> nil
+      value -> value |> String.split(";") |> hd() |> String.trim() |> String.downcase()
+    end
+  end
+
+  defp header(headers, name) do
+    case Enum.find(headers, fn {k, _} -> String.downcase(to_string(k)) == name end) do
+      nil -> nil
+      {_, value} -> to_string(value)
+    end
+  end
+
+  defp mime_to_type(nil), do: nil
+
+  defp mime_to_type(mime) do
+    Enum.find_value(@mime_type_map, fn {type, mimes} -> if mime in mimes, do: type end)
   end
 
   defp get_entity(type, url)
