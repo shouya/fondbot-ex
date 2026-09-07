@@ -39,7 +39,8 @@ defmodule Extension.Store.Redis do
         :undef
 
       {:ok, binary} when is_binary(binary) ->
-        deserialized = :erlang.binary_to_term(:base64.decode(binary))
+        # :safe keeps a writable redis from being a way to run code here.
+        deserialized = :erlang.binary_to_term(:base64.decode(binary), [:safe])
         {:ok, deserialized}
 
       {:error, err} ->

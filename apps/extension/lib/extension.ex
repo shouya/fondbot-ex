@@ -127,7 +127,7 @@ defmodule Extension do
 
     GenServer.reply(from, reply)
 
-    ext.save(new_state)
+    if new_state != state, do: ext.save(new_state)
     {:noreply, new_state}
   rescue
     e in FunctionClauseError ->
