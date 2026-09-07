@@ -29,8 +29,8 @@ defmodule Manager.ExtStack do
   end
 
   @impl true
-  def handle_cast({:insert, ext_mod}, exts) do
-    {:noreply, [ext_mod | exts]}
+  def handle_call({:insert, ext_mod}, _from, exts) do
+    {:reply, :ok, [ext_mod | exts]}
   end
 
   @impl true

@@ -12,8 +12,7 @@ defmodule Extension.Application do
 
     children = [
       store_adapter,
-      Util.InlineResultCollector,
-      Task.Supervisor
+      Util.InlineResultCollector
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

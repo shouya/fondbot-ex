@@ -18,6 +18,8 @@ defmodule Extension.Random do
       "Use the buttons below to generate something random",
       reply_markup: keyboard(:inline, [btns])
     )
+
+    :ok
   end
 
   def on(%CallbackQuery{data: "random.0.0-1.0"} = q, _) do
@@ -44,5 +46,6 @@ defmodule Extension.Random do
     """
 
     reply(q.message, text, parse_mode: "Markdown")
+    :ok
   end
 end

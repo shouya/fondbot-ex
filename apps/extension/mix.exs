@@ -27,6 +27,7 @@ defmodule Extension.MixProject do
   defp deps do
     [
       {:util, in_umbrella: true},
+      {:hackney, "~> 1.18"},
       {:nanoid, "~> 2.0"},
       {:poison, "~> 3.1"},
       {:exactor, "~> 2.2"},

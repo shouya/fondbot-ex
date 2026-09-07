@@ -12,7 +12,6 @@ defmodule Manager.ExtSupervisor do
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Manager.Supervisor]
-    Supervisor.init(@extra_sup ++ children, opts)
+    Supervisor.init(@extra_sup ++ children, strategy: :one_for_one)
   end
 end

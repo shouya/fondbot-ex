@@ -105,11 +105,11 @@ defmodule Util.Telegram do
   def answer(query, opts \\ [], opts2 \\ [])
 
   def answer(%CallbackQuery{id: id}, opts, _) do
-    fn -> bot_request(:answer_callback_query, [id, opts]) end
+    async(fn -> bot_request(:answer_callback_query, [id, opts]) end)
   end
 
   def answer(%InlineQuery{id: id}, results, opts) do
-    fn -> bot_request(:answer_inline_query, [id, results, opts]) end
+    async(fn -> bot_request(:answer_inline_query, [id, results, opts]) end)
   end
 
   def reply(%Message{message_id: id} = msg, request, opts \\ []) do
@@ -169,7 +169,7 @@ defmodule Util.Telegram do
   end
 
   defp edit(nil, func, args, opts) do
-    Logger.warn(
+    Logger.warning(
       "Attempt to edit nil as a message",
       extra: %{func: func, args: args, opts: opts}
     )
@@ -199,7 +199,7 @@ defmodule Util.Telegram do
   end
 
   def delete_message(nil) do
-    Logger.warn("Attempt to delete nil as a message")
+    Logger.warning("Attempt to delete nil as a message")
   end
 
   def chat_action(chat_id, action) do
@@ -214,7 +214,7 @@ defmodule Util.Telegram do
     ~s("#{shortened}…")
   end
 
-  def message_digest(%Message{text: text}) do
+  def message_digest(%Message{text: text}) when is_binary(text) do
     ~s("#{text}")
   end
 
