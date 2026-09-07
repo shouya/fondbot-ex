@@ -14,6 +14,7 @@ defmodule Extension.Cleanser do
       is_nil(uri) -> throw(:skip)
       match?({:error, _, _}, uri) -> throw(:skip)
       is_nil(uri[:scheme]) || is_nil(uri[:host]) -> throw(:skip)
+      uri[:scheme] not in ["http", "https"] -> throw(:skip)
       is_nil(uri[:query]) -> throw(:skip)
       uri[:path] == "" -> throw(:skip)
       true -> :ok
@@ -137,7 +138,16 @@ defmodule Extension.Cleanser do
 
       map ->
         query = map[:query] || ""
-        Map.put(map, :query, :uri_string.dissect_query(query))
+        dissect_query(map, query)
+    end
+  end
+
+  # dissect_query rejects malformed percent-encoding, and the error tuple is
+  # neither nil nor a list of pairs.
+  defp dissect_query(map, query) do
+    case :uri_string.dissect_query(query) do
+      pairs when is_list(pairs) -> Map.put(map, :query, pairs)
+      _ -> nil
     end
   end
 
