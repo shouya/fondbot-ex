@@ -38,6 +38,8 @@ config :extension,
   # used by Extension.Store.Dets
   data_dir: "/data",
   # used by Extension.Store.Redis
-  redis_uri: {:system, "REDIS_URI", "redis://localhost:6379"}
+  redis_uri: {:system, "REDIS_URI", "redis://localhost:6379"},
+  # used by Extension.YoutubeAudio
+  invidious_instance: {:system, "INVIDIOUS_INSTANCE", "https://invidious.namazso.eu"}
 
 import_config "#{Mix.env()}.exs"

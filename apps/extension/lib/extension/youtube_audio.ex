@@ -37,23 +37,38 @@ defmodule Extension.YoutubeAudio do
 
   alias Util.InlineResultCollector
 
-  @invidious_instance "https://invidious.namazso.eu"
+  @default_instance "https://invidious.namazso.eu"
+
+  @spec instance() :: binary()
+  def instance do
+    Application.get_env(:extension, :invidious_instance, @default_instance)
+  end
 
   def on(%InlineQuery{query: input} = q, _) do
-    input = String.trim(input)
+    case extract_youtube_video_id(String.trim(input)) do
+      {:ok, vid} ->
+        # Two round trips to a third party must not block the extension.
+        InlineResultCollector.extend(q.id, 3000)
+        spawn(fn -> answer_with_audio(q.id, vid) end)
+        :ok
 
-    with {:ok, vid} <- extract_youtube_video_id(input),
-         {:ok, metadata} <- fetch_metadata(vid),
-         {:ok, direct_url} <- fetch_direct_url(vid),
-         {:ok, result} <- to_query_result(vid, metadata, direct_url) do
-      InlineResultCollector.add(q.id, [result])
-      :ok
-    else
-      _ -> :skip
+      {:error, _} ->
+        :skip
     end
   end
 
   def on(_query, _state), do: :skip
+
+  @spec answer_with_audio(binary(), binary()) :: :ok
+  def answer_with_audio(query_id, vid) do
+    with {:ok, metadata} <- fetch_metadata(vid),
+         {:ok, direct_url} <- fetch_direct_url(vid),
+         {:ok, result} <- to_query_result(vid, metadata, direct_url) do
+      InlineResultCollector.add(query_id, [result])
+    end
+
+    :ok
+  end
 
   @spec extract_youtube_video_id(binary()) :: {:ok, binary()} | {:error, any}
   defp extract_youtube_video_id(input) do
@@ -77,29 +92,40 @@ defmodule Extension.YoutubeAudio do
     _ -> {:error, "not youtube"}
   end
 
+  @req_opts [
+    receive_timeout: 5_000,
+    connect_options: [timeout: 3_000],
+    retry: false
+  ]
+
   @spec fetch_direct_url(binary()) :: {:ok, binary()} | {:error, any}
   def fetch_direct_url(vid) do
+    instance = instance()
+
     resp =
-      Req.post("#{@invidious_instance}/download",
-        form: [
-          id: vid,
-          title: "bazbar",
-          download_widget: ~s[{"itag":140,"ext":"m4a"}]
-        ],
-        follow_redirects: false
+      Req.post(
+        "#{instance}/download",
+        [
+          form: [
+            id: vid,
+            title: "bazbar",
+            download_widget: ~s[{"itag":140,"ext":"m4a"}]
+          ],
+          follow_redirects: false
+        ] ++ @req_opts
       )
 
     with {:ok, resp} <- resp,
          [real_url] <- Req.Response.get_header(resp, "location") do
-      {:ok, "#{@invidious_instance}#{real_url}"}
+      {:ok, "#{instance}#{real_url}"}
     else
       _ -> {:error, "failed to fetch direct link"}
     end
   end
 
-  @spec fetch_metadata(binary()) :: %{title: binary(), duration: integer()}
+  @spec fetch_metadata(binary()) :: {:ok, map()} | {:error, any}
   def fetch_metadata(vid) do
-    resp = Req.get("#{@invidious_instance}/api/v1/videos/#{vid}")
+    resp = Req.get("#{instance()}/api/v1/videos/#{vid}", @req_opts)
 
     with {:ok, %{body: json}} <- resp do
       metadata = %{
