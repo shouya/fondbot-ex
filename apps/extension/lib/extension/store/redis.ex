@@ -39,9 +39,14 @@ defmodule Extension.Store.Redis do
         :undef
 
       {:ok, binary} when is_binary(binary) ->
-        # :safe keeps a writable redis from being a way to run code here.
-        deserialized = :erlang.binary_to_term(:base64.decode(binary), [:safe])
-        {:ok, deserialized}
+        try do
+          {:ok, :erlang.binary_to_term(:base64.decode(binary), [:safe])}
+        rescue
+          ArgumentError ->
+            require Logger
+            Logger.warning("Discarding undecodable saved state for #{ext}")
+            :undef
+        end
 
       {:error, err} ->
         {:error, err}

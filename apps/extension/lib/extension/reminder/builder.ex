@@ -16,6 +16,8 @@ defmodule Extension.Reminder.Builder do
     new()
   end
 
+  def save(_state), do: :ok
+
   def before_init() do
     Process.flag(:trap_exit, true)
   end

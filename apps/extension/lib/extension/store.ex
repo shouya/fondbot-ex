@@ -12,7 +12,32 @@ defmodule Extension.Store do
 
   def start_link(opts), do: apply(adapter(), :start_link, [opts])
 
-  def save_state(ext, state), do: apply(adapter(), :save_state, [ext, state])
+  def save_state(ext, state) do
+    if transient?(state) do
+      require Logger
+      Logger.warning("Not saving state of #{ext}: it contains a pid, ref, port, or fun")
+      :ok
+    else
+      apply(adapter(), :save_state, [ext, state])
+    end
+  end
+
+  # Pids, refs, ports, and funs do not survive a node restart; a state
+  # containing one would poison the store (see load_state's :safe decode).
+  defp transient?(term) when is_pid(term), do: true
+  defp transient?(term) when is_reference(term), do: true
+  defp transient?(term) when is_port(term), do: true
+  defp transient?(term) when is_function(term), do: true
+  defp transient?(term) when is_list(term), do: Enum.any?(term, &transient?/1)
+
+  defp transient?(term) when is_tuple(term),
+    do: term |> Tuple.to_list() |> Enum.any?(&transient?/1)
+
+  defp transient?(term) when is_map(term) do
+    term |> :maps.to_list() |> Enum.any?(fn {k, v} -> transient?(k) or transient?(v) end)
+  end
+
+  defp transient?(_), do: false
   def load_state(ext), do: apply(adapter(), :load_state, [ext])
 
   def adapter do
