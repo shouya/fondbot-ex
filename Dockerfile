@@ -1,4 +1,4 @@
-FROM docker.io/library/elixir:alpine AS build
+FROM docker.io/library/elixir:1.14.5-otp-25-alpine AS build
 RUN apk --no-cache add ca-certificates curl git
 
 RUN mkdir /src
@@ -26,7 +26,7 @@ RUN mix compile
 RUN mix release
 
 # only to ensure the base image is compatible
-FROM docker.io/library/elixir:alpine
+FROM docker.io/library/elixir:1.14.5-otp-25-alpine
 RUN apk --no-cache add curl git bash
 
 RUN mkdir /app /data
