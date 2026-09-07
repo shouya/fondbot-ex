@@ -1,13 +1,22 @@
 defmodule Manager.Updater.Poll do
   use GenServer
 
+  require Logger
+
+  # :timeout is getUpdates' long-poll timeout in seconds; :interval is the
+  # pause between polls, needed only to avoid a hot loop when the timeout
+  # is 0.
   @config Application.compile_env(:manager, :poll,
-            interval: 1,
+            interval: 500,
+            timeout: 30,
             limit: 100,
             retries: 10
           )
 
+  @error_backoff_ms 1_000
+
   defstruct [
+    :interval,
     :timer_ref,
     :update_id,
     :retries_left,
@@ -23,13 +32,14 @@ defmodule Manager.Updater.Poll do
   def init(_) do
     spawn(fn -> Nadia.delete_webhook() end)
     timer_ref = Process.send_after(__MODULE__, :poll, 100)
+    retries = Keyword.get(@config, :retries, 10)
 
-    state =
-      %__MODULE__{}
-      |> Map.put(:interval, Keyword.get(@config, :interval, 1))
-      |> Map.put(:timer_ref, timer_ref)
-      |> Map.put(:retries_left, Keyword.get(@config, :retries, 10))
-      |> Map.put(:max_retries, Keyword.get(@config, :retries, 10))
+    state = %__MODULE__{
+      interval: Keyword.get(@config, :interval, 500),
+      timer_ref: timer_ref,
+      retries_left: retries,
+      max_retries: retries
+    }
 
     {:ok, state}
   end
@@ -46,41 +56,50 @@ defmodule Manager.Updater.Poll do
   @impl GenServer
   def handle_info(:poll, s) do
     opts =
-      []
-      |> Keyword.put(:limit, Keyword.get(@config, :limit, 100))
-      |> Keyword.put(:offset, Map.get(s, :update_id))
+      [
+        limit: Keyword.get(@config, :limit, 100),
+        timeout: Keyword.get(@config, :timeout, 30),
+        offset: s.update_id
+      ]
       |> Enum.reject(fn {_, v} -> is_nil(v) end)
 
     case Nadia.get_updates(opts) do
       {:ok, updates} ->
         Manager.Updater.dispatch_updates(updates)
 
-        update_id =
-          updates
-          |> Enum.map(fn %{update_id: id} -> id end)
-          |> Enum.max(fn -> 0 end)
+        timer_ref = Process.send_after(__MODULE__, :poll, s.interval)
 
-        timer_ref = Process.send_after(__MODULE__, :poll, Map.get(s, :interval))
-
-        new_state =
+        new_state = %{
           s
-          |> Map.put(:update_id, update_id + 1)
-          |> Map.put(:retries_left, Map.get(s, :max_retries))
-          |> Map.put(:timer_ref, timer_ref)
-          |> Map.put(:error, nil)
+          | update_id: next_offset(updates, s.update_id),
+            retries_left: s.max_retries,
+            timer_ref: timer_ref,
+            error: nil
+        }
 
         {:noreply, new_state}
 
       {:error, err} ->
-        timer_ref = Process.send_after(__MODULE__, :poll, 300)
+        Logger.warning("getUpdates failed (#{s.retries_left - 1} retries left): #{inspect(err)}")
+        timer_ref = Process.send_after(__MODULE__, :poll, @error_backoff_ms)
 
-        new_state =
+        new_state = %{
           s
-          |> Map.update!(:retries_left, &(&1 - 1))
-          |> Map.put(:timer_ref, timer_ref)
-          |> Map.put(:error, err)
+          | retries_left: s.retries_left - 1,
+            timer_ref: timer_ref,
+            error: err
+        }
 
         {:noreply, new_state}
     end
+  end
+
+  # An empty poll must leave the offset alone; resetting it replays every
+  # update telegram still holds.
+  defp next_offset([], current), do: current
+
+  defp next_offset(updates, _current) do
+    highest = updates |> Enum.map(fn %{update_id: id} -> id end) |> Enum.max()
+    highest + 1
   end
 end

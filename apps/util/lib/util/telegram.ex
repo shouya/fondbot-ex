@@ -279,13 +279,18 @@ defmodule Util.Telegram do
 
   def remove_command_suffix(any), do: any
 
-  @max_retries 10
+  # Retries must fit inside Extension.process_update/2's call deadline,
+  # since a sync request blocks the extension process.
+  @retry_budget_ms 3_000
+  @first_backoff_ms 200
   @retriable_errors [
     :timeout,
+    :closed,
     :nxdomain,
-    :enetunreach
+    :enetunreach,
+    :econnrefused
   ]
-  def bot_request(func, args, retries \\ @max_retries) do
+  def bot_request(func, args, backoff \\ @first_backoff_ms) do
     case apply(Nadia, func, args) do
       :ok ->
         :ok
@@ -294,19 +299,41 @@ defmodule Util.Telegram do
         {:ok, t}
 
       {:error, %{reason: reason}} = e when reason in @retriable_errors ->
-        if retries == 0 do
+        if backoff > @retry_budget_ms do
           e
         else
-          :timer.sleep(1_000)
-          bot_request(func, args, retries - 1)
+          :timer.sleep(backoff)
+          bot_request(func, args, backoff * 2)
         end
 
+      {:error, %{reason: reason}} = e ->
+        report_api_error(func, reason)
+        e
+
       {:error, e} ->
-        Logger.error("Error requesting telegram: #{inspect(e)}")
-        {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-        Sentry.capture_exception(e, stacktrace: stacktrace)
+        report_api_error(func, e)
         {:error, e}
     end
+  end
+
+  defp report_api_error(func, reason) when is_binary(reason) do
+    if String.starts_with?(reason, "Too Many Requests") do
+      Logger.warning("Rate limited by telegram on #{func}: #{reason}")
+    else
+      report_exception(func, reason)
+    end
+  end
+
+  defp report_api_error(func, reason), do: report_exception(func, reason)
+
+  defp report_exception(func, reason) do
+    Logger.error("Error requesting telegram (#{func}): #{inspect(reason)}")
+    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
+
+    Sentry.capture_message("telegram request failed",
+      extra: %{func: func, reason: inspect(reason)},
+      stacktrace: stacktrace
+    )
   end
 
   defguardp begin_with_slash(msg) when binary_part(msg, 0, 1) == "/"
